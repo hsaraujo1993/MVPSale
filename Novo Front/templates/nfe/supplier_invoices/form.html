@@ -1,0 +1,43 @@
+<h1 class="text-2xl font-semibold mb-4">Importar XML de Nota de Fornecedor</h1>
+
+<div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 mb-4">
+  <form id="xmlForm" class="space-y-3">
+    <div>
+      <label class="block text-sm mb-1">Arquivo XML</label>
+      <input id="xml" name="xml" type="file" accept=".xml" class="block w-full text-sm" required />
+    </div>
+    <button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Enviar</button>
+  </form>
+</div>
+
+<div id="preview" class="hidden bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+  <h2 class="font-medium mb-2">Preview</h2>
+  <pre class="text-xs whitespace-pre-wrap" id="previewJson"></pre>
+  </div>
+
+<script>
+  const form = document.getElementById('xmlForm');
+  const preview = document.getElementById('preview');
+  const previewJson = document.getElementById('previewJson');
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const submitBtn = form.querySelector('button[type="submit"], button');
+    FormUtils.clearFieldErrors(form);
+    FormUtils.setLoading(submitBtn, true);
+    const file = document.getElementById('xml').files[0];
+    if (!file) { FormUtils.setLoading(submitBtn, false); Http.toast('Selecione um arquivo .xml', 'error'); return; }
+    const fd = new FormData();
+    fd.append('xml', file);
+    try {
+      const data = await Http.fetchJson('/api/purchase/import-xml/', { method:'POST', body: fd });
+      preview.classList.remove('hidden');
+      previewJson.textContent = JSON.stringify(data, null, 2);
+      Http.toast('XML importado', 'success');
+      // hide the upload form after success
+      form.classList.add('hidden');
+    } catch(err){
+      if(err && err.data) FormUtils.showFieldErrors(form, err.data);
+      else Http.toast(err.message||'Erro no upload', 'error');
+    } finally { FormUtils.setLoading(submitBtn, false); }
+  });
+</script>

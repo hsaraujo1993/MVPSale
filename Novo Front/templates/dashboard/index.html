@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · MVPSale{% endblock %}
+
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Dashboard" %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
+    <p class="text-slate-400 text-sm">Visão geral do sistema — pedidos, faturamento e estoque.</p>
+  </div>
+  <button id="refreshBtn"
+          class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-2 text-sm transition">
+    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Atualizar
+  </button>
+</div>
+
+<!-- KPIs -->
+<div id="kpis" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+  <div class="p-5 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 shadow-lg text-white">
+    <p class="text-sm opacity-80">Pedidos hoje</p>
+    <p id="kpi-orders" class="text-3xl font-semibold mt-1">—</p>
+  </div>
+  <div class="p-5 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 shadow-lg text-white">
+    <p class="text-sm opacity-80">Faturamento</p>
+    <p id="kpi-revenue" class="text-3xl font-semibold mt-1">—</p>
+  </div>
+  <div class="p-5 rounded-xl bg-gradient-to-br from-sky-600 to-cyan-600 shadow-lg text-white">
+    <p class="text-sm opacity-80">Ticket médio</p>
+    <p id="kpi-ticket" class="text-3xl font-semibold mt-1">—</p>
+  </div>
+  <div class="p-5 rounded-xl bg-gradient-to-br from-rose-600 to-pink-600 shadow-lg text-white">
+    <p class="text-sm opacity-80">Estoque crítico</p>
+    <p id="kpi-critical" class="text-3xl font-semibold mt-1">—</p>
+  </div>
+</div>
+
+<!-- Gráficos e Auditoria -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 bg-slate-800/40 border border-slate-700 rounded-2xl p-5 shadow-lg backdrop-blur-md">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-medium text-slate-200">Eventos de Auditoria</h2>
+      <button id="auditRefresh" class="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1">
+        <i data-lucide="rotate-cw" class="w-3 h-3"></i> Atualizar
+      </button>
+    </div>
+    <ul id="audit" class="space-y-2 text-sm text-slate-300"></ul>
+  </div>
+
+  <div class="bg-slate-800/40 border border-slate-700 rounded-2xl p-5 shadow-lg backdrop-blur-md">
+    <h2 class="font-medium mb-3 text-slate-200">Faturamento Diário</h2>
+    <canvas id="chart" width="400" height="220" class="w-full"></canvas>
+  </div>
+</section>
+
+<script>
+  async function loadDashboard() {
+    try { await Http.fetchJson('/api/health/'); } catch(e) {}
+    const today = new Date();
+    const rand = (min, max) => Math.floor(min + Math.random() * (max - min));
+    const randFloat = (min, max) => (min + Math.random() * (max - min)).toFixed(2);
+
+    document.getElementById('kpi-orders').textContent = rand(15, 50);
+    document.getElementById('kpi-revenue').textContent = randFloat(1000, 9000);
+    document.getElementById('kpi-ticket').textContent = randFloat(60, 300);
+    document.getElementById('kpi-critical').textContent = rand(0, 12);
+
+    const audit = document.getElementById('audit');
+    audit.innerHTML = '';
+    for (let i = 0; i < 6; i++) {
+      const li = document.createElement('li');
+      li.className = 'p-2 rounded-lg bg-slate-900/60 border border-slate-700 hover:border-slate-600 transition';
+      li.textContent = `${today.toLocaleTimeString('pt-BR')} • Produto atualizado #${i+1}`;
+      audit.appendChild(li);
+    }
+
+    // Gráfico simples
+    const ctx = document.getElementById('chart').getContext('2d');
+    const values = Array.from({ length: 7 }, () => 50 + Math.random() * 100);
+    const w = ctx.canvas.width, h = ctx.canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const barW = w / values.length - 15;
+    values.forEach((v, i) => {
+      const x = 10 + i * (barW + 15);
+      const y = h - v;
+      const gradient = ctx.createLinearGradient(0, y, 0, h);
+      gradient.addColorStop(0, '#10b981');
+      gradient.addColorStop(1, '#047857');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, y, barW, v);
+      ctx.fillStyle = '#a7f3d0';
+      ctx.font = '12px Inter';
+      ctx.fillText(`R$${Math.floor(v * 10)}`, x, y - 5);
+    });
+  }
+
+  document.getElementById('refreshBtn').onclick = loadDashboard;
+  document.getElementById('auditRefresh').onclick = loadDashboard;
+  loadDashboard();
+</script>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>lucide.createIcons();</script>
+{% endblock %}

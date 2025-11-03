@@ -1,0 +1,158 @@
+<!-- 🏷️ Cabeçalho -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Formas de Pagamento</h1>
+    <p class="text-slate-400 text-sm">Configure formas de pagamento, taxas e prazos de liquidação.</p>
+  </div>
+  <a href="#" id="toggleNewPm" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">Nova Forma</a>
+</div>
+
+<div id="newPmWrap" class="hidden mb-4 bg-slate-800/50 border border-slate-700 rounded-2xl p-4">
+  <form id="newPmForm" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+    <div class="md:col-span-2">
+      <label for="pm-code" class="sr-only">Código</label>
+      <label class="block text-sm mb-1">Código</label>
+      <input id="pm-code" name="code" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" required />
+    </div>
+    <div class="md:col-span-2">
+      <label for="pm-name" class="sr-only">Nome</label>
+      <label class="block text-sm mb-1">Nome</label>
+      <input id="pm-name" name="name" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" required />
+    </div>
+    <div>
+      <label for="pm-type" class="sr-only">Tipo</label>
+      <label class="block text-sm mb-1">Tipo</label>
+      <select id="pm-type" name="type" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+        <option value="cash">Dinheiro</option>
+        <option value="pix">PIX</option>
+        <option value="card_credit">Cartão Crédito</option>
+        <option value="card_debit">Cartão Débito</option>
+        <option value="boleto">Boleto</option>
+        <option value="voucher">Voucher</option>
+        <option value="credit_note">Crédito Loja</option>
+      </select>
+    </div>
+    <div>
+      <label for="pm-fee" class="sr-only">Taxa</label>
+      <label class="block text-sm mb-1">Taxa %</label>
+      <input id="pm-fee" name="fee_percent" type="number" step="0.001" min="0" value="0" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label for="pm-settlement" class="sr-only">D+ Liquidação</label>
+      <label class="block text-sm mb-1">D+ Liquidação</label>
+      <input id="pm-settlement" name="settlement_days" type="number" step="1" min="0" value="0" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div class="md:col-span-6">
+      <label class="inline-flex items-center gap-2 text-sm">
+        <input type="checkbox" name="auto_settle" class="rounded border-slate-700 bg-slate-900" />
+        Baixa automática (auto_settle)
+      </label>
+    </div>
+    <div class="md:col-span-6">
+      <button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Salvar</button>
+    </div>
+  </form>
+  <hr class="my-3 border-slate-700" />
+</div>
+<div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+  <table class="min-w-full text-sm border-separate border-spacing-0"><thead class="bg-slate-800/70 text-slate-300 uppercase text-xs"><tr>
+    <th class="text-left px-3 py-2 font-medium">Código</th>
+    <th class="text-left px-3 py-2 font-medium">Nome</th>
+    <th class="text-left px-3 py-2 font-medium">Tipo</th>
+    <th class="text-left px-3 py-2 font-medium">Taxa %</th>
+    <th class="text-left px-3 py-2 font-medium">Ações</th>
+  </tr></thead><tbody id="rowsPm" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition"></tbody></table>
+</div>
+<div class="mt-4 flex items-center gap-2 text-sm">
+  <button id="prevPm" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">← Anterior</button>
+  <span id="pageInfoPm" class="text-slate-400 min-w-[80px] text-center"></span>
+  <button id="nextPm" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Próxima →</button>
+</div>
+<script>
+  const spm = { page:1, q:'', ordering:'name', next:null, previous:null };
+  const rows = document.getElementById('rowsPm');
+  const q = document.getElementById('qPm');
+  const ordering = document.getElementById('orderingPm');
+  const apply = document.getElementById('applyPm');
+  const prev = document.getElementById('prevPm');
+  const next = document.getElementById('nextPm');
+  const pageInfo = document.getElementById('pageInfoPm');
+  const toggleNewPm = document.getElementById('toggleNewPm');
+  const newPmWrap = document.getElementById('newPmWrap');
+  toggleNewPm?.addEventListener('click', (e)=>{ e.preventDefault(); newPmWrap.classList.toggle('hidden'); });
+  document.getElementById('newPmForm')?.addEventListener('submit', async (e)=>{
+    e.preventDefault(); const form = e.currentTarget || e.target; const submitBtn = form.querySelector('button[type="submit"], button'); FormUtils.clearFieldErrors(form); FormUtils.setLoading(submitBtn, true); const fd=new FormData(form);
+    const payload={
+      code: fd.get('code'), name: fd.get('name'), type: fd.get('type'),
+      fee_percent: parseFloat(fd.get('fee_percent')||'0'),
+      settlement_days: parseInt(fd.get('settlement_days')||'0', 10),
+      auto_settle: fd.get('auto_settle') === 'on'
+    };
+    try{ await Http.fetchJson('/api/payment/methods/', { method:'POST', body: JSON.stringify(payload)}); Http.toast('Forma criada','success'); if(form && typeof form.reset === 'function') form.reset(); newPmWrap.classList.add('hidden'); load(); }
+    catch(err){ if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message||'Erro ao criar forma','error'); }
+    finally{ FormUtils.setLoading(submitBtn, false); }
+  });
+  apply.addEventListener('click', ()=>{ spm.page=1; spm.q=q.value; spm.ordering=ordering.value; load(); });
+  prev.addEventListener('click', ()=>{ if(spm.previous){ spm.page--; load(); }});
+  next.addEventListener('click', ()=>{ if(spm.next){ spm.page++; load(); }});
+  async function load(){
+    const params = new URLSearchParams(); params.set('page', spm.page);
+    if(spm.q) params.set('search', spm.q); if(spm.ordering) params.set('ordering', spm.ordering);
+    try{
+      const data = await Http.fetchJson(`/api/payment/methods/?${params}`);
+      rows.innerHTML=''; (data.results||[]).forEach(m=>{
+        const tr = document.createElement('tr'); tr.innerHTML = `
+          <td class="px-3 py-2">${m.code||''}</td>
+          <td class="px-3 py-2">${m.name}</td>
+          <td class="px-3 py-2">${m.type||''}</td>
+          <td class="px-3 py-2">${m.fee_percent ?? ''}</td>
+          <td class="px-3 py-2"><button class="text-sky-400 hover:underline" data-view="${m.uuid}">Visualizar</button></td>`; rows.appendChild(tr);
+      });
+      rows.querySelectorAll('[data-view]').forEach(btn=> btn.addEventListener('click', ()=> viewMethod(btn.dataset.view)));
+      spm.next=data.next; spm.previous=data.previous; pageInfo.textContent = `Página ${spm.page}`;
+    }catch(err){ Http.toast(err.message||'Erro ao carregar métodos','error'); }
+  } load();
+
+  // Painel de detalhe / editar / deletar
+  const detailWrapPm = document.createElement('div');
+  detailWrapPm.className = 'mt-4';
+  rows.parentElement.parentElement.after(detailWrapPm);
+  async function viewMethod(uuid){
+    try{
+      const m = await Http.fetchJson(`/api/payment/methods/${uuid}/`);
+      detailWrapPm.innerHTML = `
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">Detalhe da Forma</h3>
+            <div class="space-x-2">
+              <button id="editPm" class="px-3 py-1 rounded bg-slate-700">Editar</button>
+              <button id="delPm" class="px-3 py-1 rounded bg-rose-600 text-white">Deletar</button>
+              <button id="closePm" class="px-3 py-1 rounded bg-slate-700">Voltar</button>
+            </div>
+          </div>
+          <div id="pmView" class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div class="text-sm">Código: <span>${m.code||''}</span></div>
+            <div class="text-sm">Nome: <span>${m.name||''}</span></div>
+            <div class="text-sm">Tipo: <span>${m.type||''}</span></div>
+            <div class="text-sm">Taxa %: <span>${m.fee_percent??''}</span></div>
+            <div class="text-sm">Taxa fixa: <span>${m.fee_fixed??''}</span></div>
+            <div class="text-sm">D+ Liquidação: <span>${m.settlement_days??''}</span></div>
+            <div class="text-sm">Auto settle: <span>${m.auto_settle? 'Sim':'Não'}</span></div>
+          </div>
+          <form id="pmEdit" class="hidden grid grid-cols-1 md:grid-cols-6 gap-3 mt-2">
+            <div class="md:col-span-2"><label class="block text-sm mb-1">Nome</label><input name="name" value="${m.name||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Taxa %</label><input name="fee_percent" type="number" step="0.001" value="${m.fee_percent??0}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Taxa fixa</label><input name="fee_fixed" type="number" step="0.01" value="${m.fee_fixed??0}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">D+ Liquidação</label><input name="settlement_days" type="number" step="1" value="${m.settlement_days??0}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div class="md:col-span-6"><label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" name="auto_settle" ${m.auto_settle?'checked':''} class="rounded border-slate-700 bg-slate-900"/> Baixa automática</label></div>
+            <div class="md:col-span-6"><button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Salvar</button></div>
+          </form>
+        </div>`;
+      detailWrapPm.scrollIntoView({behavior:'smooth'});
+      document.getElementById('closePm').onclick = ()=> detailWrapPm.innerHTML='';
+      document.getElementById('editPm').onclick = ()=>{ document.getElementById('pmView').classList.add('hidden'); document.getElementById('pmEdit').classList.remove('hidden'); };
+      document.getElementById('delPm').onclick = ()=> UI.confirm(`Excluir forma "${m.name||m.code||''}"?`, async ()=>{ try{ await Http.fetchJson(`/api/payment/methods/${uuid}/`, { method:'DELETE' }); Http.toast('Excluída','success'); detailWrapPm.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } });
+      document.getElementById('pmEdit').onsubmit = async (e)=>{ e.preventDefault(); const fd=new FormData(e.currentTarget); const payload={ name: fd.get('name'), fee_percent: parseFloat(fd.get('fee_percent')||'0'), fee_fixed: parseFloat(fd.get('fee_fixed')||'0'), settlement_days: parseInt(fd.get('settlement_days')||'0',10), auto_settle: fd.get('auto_settle')==='on' }; try{ await Http.fetchJson(`/api/payment/methods/${uuid}/`, { method:'PATCH', body: JSON.stringify(payload)}); Http.toast('Atualizada','success'); detailWrapPm.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao atualizar','error'); } };
+    }catch(err){ Http.toast(err.message||'Erro ao carregar detalhe','error'); }
+  }
+</script>

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Pedidos · MVPSale{% endblock %}
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Pedidos" %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Pedidos</h1>
+    <p class="text-slate-400 text-sm">Acompanhe e gerencie pedidos de venda.</p>
+  </div>
+  <a href="#" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">Novo Pedido</a>
+</div>
+
+<div class="bg-slate-800/40 border border-slate-700 rounded-2xl p-4">
+  <p class="text-slate-400 text-sm">Página em desenvolvimento — componentes de listagem e filtros serão adicionados em breve.</p>
+</div>
+
+{% endblock %}

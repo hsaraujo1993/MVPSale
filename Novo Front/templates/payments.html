@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Pagamentos · MVPSale{% endblock %}
+{% block content %}
+{% if request.GET.tab == 'receivables' %}
+  {% include "partials/breadcrumb.html" with b1="Administrativo" b2="Pagamentos Recebidos" %}
+{% elif request.GET.tab == 'card-brands' %}
+  {% include "partials/breadcrumb.html" with b1="Administrativo" b2="Bandeiras de Cartão" %}
+{% elif request.GET.tab == 'card-fees' %}
+  {% include "partials/breadcrumb.html" with b1="Administrativo" b2="Taxas de Cartão" %}
+{% else %}
+  {% include "partials/breadcrumb.html" with b1="Administrativo" b2="Formas de Pagamento" %}
+{% endif %}
+{% if request.GET.tab == 'methods' %}
+  {% include "payments/methods/list.html" %}
+{% elif request.GET.tab == 'receivables' %}
+  {% include "payments/receivables/list.html" %}
+{% elif request.GET.tab == 'card-brands' %}
+  {% include "payments/card_brands/list.html" %}
+{% elif request.GET.tab == 'card-fees' %}
+  {% include "payments/card_fees/list.html" %}
+{% else %}
+  {% include "payments/methods/list.html" %}
+{% endif %}
+{% endblock %}

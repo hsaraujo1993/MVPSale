@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Notas de Fornecedor — MVPSale{% endblock %}
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="NFe" b2="Notas de Fornecedor" %}
+<h1 class="text-2xl font-semibold mb-4">Notas de Fornecedor</h1>
+
+<div class="flex flex-wrap items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 mb-4 backdrop-blur-sm">
+  <label for="qInv" class="sr-only">Buscar notas</label>
+  <input id="qInv" placeholder="Buscar por número/série/fornecedor" class="flex-1 min-w-[240px] px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+
+  <label for="orderingInv" class="sr-only">Ordenação</label>
+  <select id="orderingInv" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+    <option value="-created_at">Mais recentes</option>
+    <option value="issue_date">Data emissão</option>
+    <option value="total_value">Valor</option>
+  </select>
+
+  <button id="applyInv" class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">Aplicar</button>
+
+  <div id="chipsInv" class="flex items-center gap-2 text-sm ml-auto">
+    <button data-st="" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Todas</button>
+    <button data-st="AUTORIZADA" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Autorizada</button>
+    <button data-st="PROCESSANDO" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Em processamento</button>
+    <button data-st="REJEITADA" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Rejeitada</button>
+  </div>
+</div>
+
+<div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+  <table class="min-w-full text-sm border-separate border-spacing-0">
+    <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs">
+      <tr>
+        <th class="text-left px-3 py-2 font-medium">Número</th>
+        <th class="text-left px-3 py-2 font-medium">Série</th>
+        <th class="text-left px-3 py-2 font-medium">Fornecedor</th>
+        <th class="text-left px-3 py-2 font-medium">Emissão</th>
+        <th class="text-left px-3 py-2 font-medium">Total</th>
+        <th class="text-left px-3 py-2 font-medium">Status</th>
+        <th class="text-left px-3 py-2 font-medium">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="rowsInv" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition-colors duration-150"></tbody>
+  </table>
+</div>
+
+<div class="mt-4 flex items-center gap-2 text-sm">
+  <button id="prevInv" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1"><i data-lucide="chevron-left" class="w-4 h-4"></i> Anterior</button>
+  <span id="pageInfoInv" class="text-slate-400 min-w-[80px] text-center"></span>
+  <button id="nextInv" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1">Próxima <i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+</div>
+
+<script>
+  (function(){
+    const sinv = { page:1, q:'', status:'', ordering:'-created_at', next:null, previous:null };
+    const rows = document.getElementById('rowsInv');
+    const q = document.getElementById('qInv');
+    const ordering = document.getElementById('orderingInv');
+    const apply = document.getElementById('applyInv');
+    const prev = document.getElementById('prevInv');
+    const next = document.getElementById('nextInv');
+    const pageInfo = document.getElementById('pageInfoInv');
+    const chips = document.getElementById('chipsInv');
+
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function fmtDate(s){ try { const d=new Date(s); if(isNaN(d)) return String(s||''); return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}` } catch(e){ return String(s||'') } }
+    function fmtMoney(v){ try { return 'R$ ' + (parseFloat(v)||0).toFixed(2) } catch(e){ return 'R$ 0,00' } }
+    function badge(st){
+      const s = String(st||'').toUpperCase();
+      if (s==='AUTORIZADA' || s==='AUTHORIZED') return '<span class="inline-block px-2 py-0.5 rounded-full bg-emerald-700 text-white">Autorizada</span>';
+      if (s==='PROCESSANDO' || s==='PENDING' || s==='EM PROCESSAMENTO') return '<span class="inline-block px-2 py-0.5 rounded-full bg-slate-600 text-white">Em processamento</span>';
+      if (s==='REJEITADA' || s==='REJECTED') return '<span class="inline-block px-2 py-0.5 rounded-full bg-rose-700 text-white">Rejeitada</span>';
+      return `<span class="inline-block px-2 py-0.5 rounded-full bg-slate-700 text-slate-200">${s}</span>`;
+    }
+    function updateChips(active){ chips.querySelectorAll('button.chip, #chipsInv button').forEach(b=>{ const on = String(b.getAttribute('data-st')||'')===String(active||''); b.className = (b.className.includes('chip')?'chip ':'') + (on ? 'px-3 py-1.5 rounded bg-slate-700 text-white border border-slate-600' : 'px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700'); }); }
+
+    apply.addEventListener('click', ()=>{ sinv.page=1; sinv.q=q.value; sinv.ordering=ordering.value; load(); });
+    chips.addEventListener('click', (e)=>{ const b=e.target && e.target.closest && e.target.closest('button[data-st]'); if(!b) return; sinv.status=b.getAttribute('data-st')||''; sinv.page=1; updateChips(sinv.status); load(); });
+    prev.addEventListener('click', ()=>{ if(sinv.previous){ sinv.page--; load(); }});
+    next.addEventListener('click', ()=>{ if(sinv.next){ sinv.page++; load(); }});
+
+    async function load(){
+      const params = new URLSearchParams(); params.set('page', sinv.page);
+      if(sinv.q) params.set('search', sinv.q);
+      if(sinv.status) params.set('status', sinv.status);
+      if(sinv.ordering) params.set('ordering', sinv.ordering);
+      try{
+        const data = await Http.fetchJson(`/api/purchase/invoices/?${params}`);
+        rows.innerHTML=''; (data.results||[]).forEach(i=>{
+          const tr = document.createElement('tr');
+          const supplier = i.supplier_name || i.supplier || '';
+          tr.innerHTML = `
+            <td class="px-3 py-2">${i.number||''}</td>
+            <td class="px-3 py-2">${i.series||''}</td>
+            <td class="px-3 py-2">${supplier}</td>
+            <td class="px-3 py-2">${fmtDate(i.issue_date||'')}</td>
+            <td class="px-3 py-2">${fmtMoney(i.total_value||0)}</td>
+            <td class="px-3 py-2">${badge(i.status||'')}</td>
+            <td class="px-3 py-2 space-x-3">
+              <button class="text-sky-400 hover:underline" data-view data-id="${i.id||i.uuid||''}">Visualizar</button>
+              <button class="text-rose-400 hover:underline" data-del data-id="${i.id||i.uuid||''}">Excluir</button>
+            </td>`;
+          rows.appendChild(tr);
+        }); sinv.next=data.next; sinv.previous=data.previous; pageInfo.textContent = `Página ${sinv.page}`; updateChips(sinv.status||'');
+      }catch(err){ Http.toast(err.message||'Erro ao carregar notas','error'); }
+    }
+
+    load();
+  })();
+</script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>try{lucide.createIcons();}catch(e){}</script>
+{% endblock %}

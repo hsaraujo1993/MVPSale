@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Home" %}
+
+<div x-data="{ mode: 'operacional' }" x-init="$nextTick(() => lucide.createIcons()); $watch('mode', () => { $nextTick(() => lucide.createIcons()); });" class="space-y-8">
+
+  <!-- Header: Title, Subtitle, Global Search -->
+  <header class="space-y-4">
+    <h1 class="text-3xl font-semibold text-white">Bem-vindo</h1>
+    <p class="text-slate-400 mb-6">Gerencie suas operações de forma rápida e integrada.</p>
+
+    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+      <!-- Global Search -->
+      <div class="relative w-full sm:w-80">
+        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400"></i>
+        <input
+          type="search"
+          aria-label="Buscar"
+          placeholder="Buscar produto, cliente ou pedido…"
+          class="w-full rounded-xl bg-slate-900/60 border border-slate-700/60 text-slate-100 placeholder:text-slate-400 pl-10 pr-3 py-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition"
+        />
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="flex flex-wrap gap-3">
+        <a href="/catalog" class="w-full sm:w-80 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900/60 border border-slate-700/60 px-4 py-2.5 text-slate-100 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:shadow-sky-700/20 transition focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+          <i data-lucide="plus-circle" class="h-5 w-5 text-sky-400"></i>
+          <span>Novo Produto</span>
+        </a>
+        <a href="/cashier" class="w-full sm:w-80 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900/60 border border-slate-700/60 px-4 py-2.5 text-slate-100 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:shadow-violet-700/20 transition focus:outline-none focus:ring-2 focus:ring-violet-500/50">
+          <i data-lucide="wallet" class="h-5 w-5 text-violet-400"></i>
+          <span>Abrir Caixa</span>
+        </a>
+        <a href="/nfe/import" class="w-full sm:w-80 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900/60 border border-slate-700/60 px-4 py-2.5 text-slate-100 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:shadow-amber-700/20 transition focus:outline-none focus:ring-2 focus:ring-amber-500/50">
+          <i data-lucide="file-down" class="h-5 w-5 text-amber-400"></i>
+          <span>Importar XML</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- KPIs -->
+  <section aria-label="Indicadores" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-400 text-sm">Vendas do dia</p>
+          <p class="text-white text-xl font-semibold">R$ 3.420</p>
+        </div>
+        <i data-lucide="shopping-bag" class="h-6 w-6 text-sky-400"></i>
+      </div>
+    </div>
+    <div class="rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-400 text-sm">Notas emitidas</p>
+          <p class="text-white text-xl font-semibold">5</p>
+        </div>
+        <i data-lucide="file-text" class="h-6 w-6 text-amber-400"></i>
+      </div>
+    </div>
+    <div class="rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-400 text-sm">Recebimentos</p>
+          <p class="text-white text-xl font-semibold">R$ 1.980</p>
+        </div>
+        <i data-lucide="credit-card" class="h-6 w-6 text-emerald-400"></i>
+      </div>
+    </div>
+    <div class="rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-400 text-sm">Pedidos pendentes</p>
+          <p class="text-white text-xl font-semibold">2</p>
+        </div>
+        <i data-lucide="timer" class="h-6 w-6 text-violet-400"></i>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mode Toggle -->
+  <div class="flex items-center justify-between">
+    <div class="text-slate-400 text-sm">
+      <span>Modo atual: </span>
+      <span class="font-medium text-slate-200" x-text="mode === 'operacional' ? 'Operacional' : 'Administrativo'"></span>
+    </div>
+    <button
+      type="button"
+      @click="mode = (mode === 'operacional' ? 'administrativo' : 'operacional')"
+      class="inline-flex items-center gap-2 rounded-xl bg-slate-900/60 border border-slate-700/60 px-4 py-2 text-slate-100 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:shadow-sky-700/20 transition focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+      :aria-label="mode === 'operacional' ? 'Alternar para Administrativo' : 'Alternar para Operacional'">
+      <i data-lucide="repeat" class="h-5 w-5 text-slate-300"></i>
+      <span x-text="mode === 'operacional' ? 'Alternar para Administrativo' : 'Alternar para Operacional'"></span>
+    </button>
+  </div>
+
+  <!-- Grids (Operacional / Administrativo) -->
+  <section class="min-h-[18rem]">
+    <!-- Operacional -->
+    <template x-if="mode === 'operacional'">
+      <div
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-y-2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-2"
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
+        <!-- Catálogo -->
+        <a href="/catalog" class="group rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20 focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <i data-lucide="boxes" class="h-6 w-6 text-sky-400"></i>
+                <h3 class="text-white font-semibold text-lg leading-tight text-sky-400">Catálogo</h3>
+              </div>
+              <p class="text-slate-400 text-sm">Gerencie produtos, preços e estoque.</p>
+            </div>
+            <i data-lucide="chevron-right" class="h-5 w-5 text-slate-500 group-hover:text-sky-400 transition"></i>
+          </div>
+        </a>
+
+        <!-- Pessoas & Parceiros -->
+        <a href="/people" class="group rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20 focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <i data-lucide="users" class="h-6 w-6 text-emerald-400"></i>
+                <h3 class="text-white font-semibold text-lg leading-tight text-emerald-400">Pessoas &amp; Parceiros</h3>
+              </div>
+              <p class="text-slate-400 text-sm">Clientes, fornecedores e parceiros.</p>
+            </div>
+            <i data-lucide="chevron-right" class="h-5 w-5 text-slate-500 group-hover:text-emerald-400 transition"></i>
+          </div>
+        </a>
+
+        <!-- Notas de Fornecedores -->
+        <a href="/nfe" class="group rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20 focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <i data-lucide="file-spreadsheet" class="h-6 w-6 text-amber-400"></i>
+                <h3 class="text-white font-semibold text-lg leading-tight text-amber-400">Notas de Fornecedores</h3>
+              </div>
+              <p class="text-slate-400 text-sm">Consultar e dar entrada em NF-e.</p>
+            </div>
+            <i data-lucide="chevron-right" class="h-5 w-5 text-slate-500 group-hover:text-amber-400 transition"></i>
+          </div>
+        </a>
+
+        <!-- Caixa -->
+        <a href="/cashier" class="group rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20 focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <i data-lucide="wallet" class="h-6 w-6 text-violet-400"></i>
+                <h3 class="text-white font-semibold text-lg leading-tight text-violet-400">Caixa</h3>
+              </div>
+              <p class="text-slate-400 text-sm">Abertura, fechamento e movimentos.</p>
+            </div>
+            <i data-lucide="chevron-right" class="h-5 w-5 text-slate-500 group-hover:text-violet-400 transition"></i>
+          </div>
+        </a>
+
+        <!-- Pedidos -->
+        <a href="/orders" class="group rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20 focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <i data-lucide="list-checks" class="h-6 w-6 text-sky-400"></i>
+                <h3 class="text-white font-semibold text-lg leading-tight">Pedidos</h3>
+              </div>
+              <p class="text-slate-400 text-sm">Pedidos em aberto e faturamento.</p>
+            </div>
+            <i data-lucide="chevron-right" class="h-5 w-5 text-slate-500 group-hover:text-sky-400 transition"></i>
+          </div>
+        </a>
+      </div>
+    </template>
+
+    <!-- Administrativo -->
+    <template x-if="mode === 'administrativo'">
+      <div
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-y-2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-2"
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
+        <!-- Pagamentos -->
+        <a href="/adminpayments" class="group rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20 focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <i data-lucide="banknote" class="h-6 w-6 text-orange-400"></i>
+                <h3 class="text-white font-semibold text-lg leading-tight text-orange-400">Pagamentos</h3>
+              </div>
+              <p class="text-slate-400 text-sm">Contas a pagar e saídas.</p>
+            </div>
+            <i data-lucide="chevron-right" class="h-5 w-5 text-slate-500 group-hover:text-orange-400 transition"></i>
+          </div>
+        </a>
+
+        <!-- Recebíveis -->
+        <a href="/receivables" class="group rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20 focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <i data-lucide="calendar-clock" class="h-6 w-6 text-orange-400"></i>
+                <h3 class="text-white font-semibold text-lg leading-tight text-orange-400">Recebíveis</h3>
+              </div>
+              <p class="text-slate-400 text-sm">Entradas previstas e baixas.</p>
+            </div>
+            <i data-lucide="chevron-right" class="h-5 w-5 text-slate-500 group-hover:text-orange-400 transition"></i>
+          </div>
+        </a>
+
+        <!-- Bandeiras -->
+        <a href="/flags" class="group rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20 focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <i data-lucide="contactless-payment" class="h-6 w-6 text-orange-400"></i>
+                <h3 class="text-white font-semibold text-lg leading-tight text-orange-400">Bandeiras</h3>
+              </div>
+              <p class="text-slate-400 text-sm">Cartões e meios de pagamento.</p>
+            </div>
+            <i data-lucide="chevron-right" class="h-5 w-5 text-slate-500 group-hover:text-orange-400 transition"></i>
+          </div>
+        </a>
+
+        <!-- Taxas -->
+        <a href="/fees" class="group rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-md p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-700/20 focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <i data-lucide="percent" class="h-6 w-6 text-orange-400"></i>
+                <h3 class="text-white font-semibold text-lg leading-tight text-orange-400">Taxas</h3>
+              </div>
+              <p class="text-slate-400 text-sm">Condições e custos por bandeira.</p>
+            </div>
+            <i data-lucide="chevron-right" class="h-5 w-5 text-slate-500 group-hover:text-orange-400 transition"></i>
+          </div>
+        </a>
+      </div>
+    </template>
+  </section>
+</div>
+
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.lucide && typeof lucide.createIcons === 'function') {
+      lucide.createIcons();
+    }
+  });
+</script>
+{% endblock %}

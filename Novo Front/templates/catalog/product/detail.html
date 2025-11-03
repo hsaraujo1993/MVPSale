@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Produto · MVPSale{% endblock %}
+
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Catálogo" u1="/catalog" b2="Produtos" u2="/catalog/products" b3="Detalhe" %}
+
+<!-- 🧱 Cabeçalho -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Detalhe do Produto</h1>
+    <p class="text-slate-400 text-sm">Visualize e edite as informações completas deste item do catálogo.</p>
+  </div>
+  <a href="/catalog/products"
+     class="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-2 transition">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+    Voltar
+  </a>
+</div>
+
+<!-- 💠 Placeholder com estilo moderno -->
+<div class="bg-slate-800/40 border border-slate-700 rounded-2xl shadow-lg backdrop-blur-md p-6 text-center">
+  <div class="flex flex-col items-center justify-center py-12">
+    <i data-lucide="box" class="w-12 h-12 text-slate-500 mb-3"></i>
+    <h2 class="text-lg font-medium text-slate-300 mb-1">Página em construção</h2>
+    <p class="text-slate-500 text-sm">Em breve você poderá visualizar e editar os detalhes completos do produto selecionado.</p>
+    <div class="mt-5">
+      <a href="/catalog/products"
+         class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-4 py-2 rounded-lg shadow transition">
+        <i data-lucide="arrow-left-circle" class="w-4 h-4"></i>
+        Voltar à lista
+      </a>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>lucide.createIcons();</script>
+{% endblock %}

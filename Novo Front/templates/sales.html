@@ -1,0 +1,601 @@
+﻿{% extends "base.html" %}
+{% block title %}PDV â€” MVPSale{% endblock %}
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Vendas" b2="PDV" %}
+<h1 class="text-2xl font-semibold mb-4">PDV</h1>
+
+<div x-data="pos()" x-init="init()" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-2 space-y-4">
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+      <div class="flex gap-2 items-center">
+        <input x-model="search" @keyup.enter="loadProducts()" placeholder="Buscar produto (nome, cÃ³digo, cÃ³digo de barras)" class="flex-1 px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+        <button @click="loadProducts()" class="px-3 py-2 rounded bg-slate-700">Buscar</button>
+      </div>
+      <div class="mt-3 max-h-56 overflow-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-slate-800/60"><tr>
+            <th class="text-left px-3 py-2">Produto</th>
+            <th class="text-left px-3 py-2">Preço</th>
+            <th class="text-left px-3 py-2">Estoque</th>
+            <th class="text-left px-3 py-2"></th>
+          </tr></thead>
+          <tbody>
+            <template x-for="p in products" :key="p.uuid">
+              <tr>
+                <td class="px-3 py-2" x-text="p.name"></td>
+                <td class="px-3 py-2" x-text="formatMoney(p.sale_price||0)"></td>
+                <td class="px-3 py-2" x-text="formatQty(productStock[p.uuid])"></td>
+                <td class="px-3 py-2">
+                  <template x-if="((productStock[p.uuid] ?? null) === null || parseFloat(productStock[p.uuid]||0) > 0) && parseFloat(p.sale_price||0) > 0">
+                    <button @click="addItem(p)" :disabled="loadingProducts" :class="{ 'opacity-50 pointer-events-none': loadingProducts }" class="text-emerald-400 hover:underline">Adicionar</button>
+                  </template>
+                  <template x-if="((productStock[p.uuid] ?? null) === null || parseFloat(productStock[p.uuid]||0) > 0) && !(parseFloat(p.sale_price||0) > 0)">
+                    <button @click="Http.toast('Defina o preço em Catálogo > Produto.', 'error'); window.open('/catalog?tab=products','_blank');" class="text-slate-400 hover:underline" title="Defina o preço em Catálogo > Produto">Sem preço</button>
+                  </template>
+                  <template x-if="(productStock[p.uuid] ?? null) !== null && parseFloat(productStock[p.uuid]||0) <= 0">
+                    <span class="text-rose-400 text-xs">Sem estoque</span>
+                  </template>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <template x-if="!products.length">
+          <div class="text-xs text-slate-400 px-3 py-2">Digite ao menos 2 caracteres e pressione Enter para buscar.</div>
+        </template>
+      </div>
+    </div>
+
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+      <h2 class="font-medium mb-2">Itens</h2>
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-800/60"><tr>
+          <th class="text-left px-3 py-2">Produto</th>
+          <th class="text-left px-3 py-2">Qtd</th>
+          <th class="text-left px-3 py-2">Unitário</th>
+          <th class="text-left px-3 py-2">Desc. %</th>
+          <th class="text-left px-3 py-2">Total</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          <template x-for="(it, idx) in items" :key="it.product">
+            <tr>
+              <td class="px-3 py-2" x-text="it.name"></td>
+              <td class="px-3 py-2">
+                <div class="flex items-center gap-2">
+                  <input type="number" min="1" step="1" class="w-24 px-2 py-1 rounded bg-slate-900 border border-slate-700" :class="{ 'border-rose-500': it.warn }" x-model.number="it.quantity" @input.debounce.300ms="syncItem(idx)" @blur="syncItem(idx)"/>
+                  <span class="text-xs text-slate-500">disp.: <span x-text="formatQty(productStock[it.product])"></span></span>
+                </div>
+                <div class="mt-1 text-xs text-rose-400" x-show="it.warn" x-text="it.warn"></div>
+              </td>
+              <td class="px-3 py-2"><input type="number" min="0" step="0.01" class="w-24 px-2 py-1 rounded bg-slate-800 border border-slate-700 cursor-not-allowed" x-model.number="it.unit_price" readonly/></td>
+              <td class="px-3 py-2"><input type="number" min="0" max="100" step="0.01" class="w-24 px-2 py-1 rounded bg-slate-900 border border-slate-700" x-model.number="it.discount_percent" @input.debounce.300ms="syncItem(idx)"/></td>
+              <td class="px-3 py-2" x-text="formatMoney(it.quantity*it.unit_price*(1 - (parseFloat(it.discount_percent||0)/100)))"></td>
+              <td class="px-3 py-2"><button @click="removeItem(idx)" class="text-rose-400 hover:underline">Remover</button></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="space-y-4">
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-3">
+      <div>
+        <label class="block text-sm mb-1">Cliente</label>
+        <select x-model="customer" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+          <option value="">Selecione</option>
+          <template x-for="c in customers" :key="c.uuid"><option :value="c.uuid" x-text="c.name"></option></template>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm mb-1">Vendedor</label>
+        <div class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-200" role="textbox" aria-readonly="true" x-text="sellerDisplay()"></div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div>
+          <label class="block text-sm mb-1">Desconto geral (%)</label>
+          <input x-model.number="orderDiscount" @change="applyOrderDiscount()" @input="applyOrderDiscount()" type="number" min="0" max="100" step="0.01" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" placeholder="0,00" />
+          <button @click="applyOrderDiscount()" class="mt-1 text-xs text-emerald-400 hover:underline">Aplicar desconto no total (%)</button>
+            <div class="mt-3">
+            <label class="block text-sm mb-1">Desconto geral (valor)</label>
+            <input x-model.number="orderDiscountAbs" @change="applyOrderDiscountAbs()" type="number" min="0" step="1" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" placeholder="0" />
+            <button @click="applyOrderDiscountAbs()" class="mt-1 text-xs text-emerald-400 hover:underline">Aplicar desconto (valor) no total</button>
+            </div>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Forma de pagamento</label>
+          <div class="flex gap-2 items-center">
+            <button @click="togglePayment()" class="px-3 py-2 rounded bg-slate-700 flex-1 text-left" x-text="paymentMethodName()"></button>
+          </div>
+          <div x-show="showPaymentSelect" class="mt-2">
+            <select x-model="payment_method" @change="syncPaymentMethod()" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+              <option value="">Selecione</option>
+              <template x-for="pm in paymentMethods" :key="pm.uuid"><option :value="pm.uuid" x-text="pm.name"></option></template>
+            </select>
+          </div>
+          <!-- Parcelamento (somente UI) para cartão de crédito -->
+          <div class="mt-2 space-y-2" x-show="isCardCredit()">
+            <div>
+              <label class="block text-sm mb-1">Bandeira</label>
+              <select x-model="cardBrand" @change="onCardBrandChange()" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+                <option value="">Selecione</option>
+                <template x-for="b in cardBrands" :key="b.id"><option :value="b.id" x-text="b.name"></option></template>
+              </select>
+            </div>
+            <div x-show="availableInstallments().length > 0">
+              <label class="block text-sm mb-1">Parcelas</label>
+              <select x-model.number="installments" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+                <template x-for="n in availableInstallments()" :key="'parc-'+n"><option :value="n" x-text="installmentLabel(n)"></option></template>
+              </select>
+            </div>
+            <div class="text-xs text-slate-400">Somente interface: parcelas não afetam o backend neste momento.</div>
+          </div>
+        </div>
+      </div>
+      <div class="space-y-1">
+        <div class="text-sm">Subtotal: <span x-text="formatMoney(itemsSubtotal())"></span></div>
+        <template x-if="feePercent() > 0">
+          <div class="text-xs text-slate-400 space-y-1">
+            <div>
+              <span class="font-medium">Desconto aplicado:</span>
+              <span x-text="formatMoney(discountApplied())"></span>
+            </div>
+            <div>
+              <span class="font-medium">Taxa Cartão:</span>
+              <span x-text="feePercent().toFixed(2) + '%'">0%</span>
+              <span x-text="' • ' + (installments || 1) + 'x'"></span>
+            </div>
+            <div>
+              <span class="font-medium">Valor juros:</span>
+              <span x-text="formatMoney(feeValue())"></span>
+            </div>
+          </div>
+        </template>
+        <div class="text-lg flex items-center gap-3">
+          <div>Valor total: <span x-text="formatMoney(total())"></span></div>
+          <div x-show="parseFloat(orderDiscountAbs||0) > 0" class="inline-flex items-center gap-2 bg-rose-700 text-white text-sm px-2 py-1 rounded">
+            <span class="font-medium">Desconto do pedido:</span>
+            <span x-text="formatMoney(orderDiscountAbs)"></span>
+          </div>
+        </div>
+      </div>
+      <div class="mt-2">
+        <label class="block text-sm mb-1">Tipo de pedido</label>
+        <div class="flex gap-2">
+          <button @click="setOrderType('carrinho')" :class="orderType==='carrinho' ? 'bg-slate-700 text-white' : 'bg-slate-900 text-slate-300'" class="px-3 py-2 rounded border border-slate-700">Carrinho</button>
+          <button @click="setOrderType('orcamento')" :class="orderType==='orcamento' ? 'bg-slate-700 text-white' : 'bg-slate-900 text-slate-300'" class="px-3 py-2 rounded border border-slate-700">Orçamento</button>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2 items-center">
+        <button @click="finalize()" :disabled="!canFinalize()" :aria-disabled="!canFinalize()" :title="finalizeDisabledReason()" :class="{ 'opacity-50 pointer-events-none': !canFinalize() }" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded px-3 py-2">Finalizar</button>
+        <button @click="resetOrder()" class="px-3 py-2 rounded bg-slate-700">Cancelar</button>
+        <template x-if="orderId && (orderStatus||'DRAFT')==='DRAFT'"><button @click="deleteOrder()" class="px-3 py-2 rounded bg-rose-700 hover:bg-rose-600 text-white">Excluir venda</button></template>
+      </div>
+      <template x-if="salesOrder && String(salesOrder).length">
+        <div class="flex flex-wrap items-center gap-3">
+          <div :class="(orderStatus||'DRAFT')==='CONFIRMED' ? 'text-emerald-300 bg-emerald-900/30 border border-emerald-700 rounded px-2 py-1' : 'text-slate-400'" class="flex items-center gap-2">
+            <span class="font-medium">Pedido:</span>
+            <span :class="(orderStatus||'DRAFT')==='CONFIRMED' ? 'text-lg font-semibold' : ''" x-text="salesOrder"></span>
+            <span x-show="(orderStatus||'DRAFT')==='CONFIRMED'" aria-hidden="true" class="text-emerald-400">✓</span>
+          </div>
+          <button @click="copySalesOrder()" class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-xs hover:bg-slate-700" title="Copiar número do pedido">📋 Copiar</button>
+          <span class="inline-block px-2 py-0.5 rounded-full bg-slate-700 text-slate-200" x-text="orderTypeLabel()"></span>
+          <span class="inline-block px-2 py-0.5 rounded-full" :class="(orderStatus||'DRAFT')==='CONFIRMED' ? 'bg-emerald-700 text-white' : 'bg-slate-700 text-slate-200'" x-text="(orderStatus||'DRAFT')==='CONFIRMED' ? 'Confirmado' : 'Rascunho'"></span>
+        </div>
+      </template>
+      <template x-if="confirmedOrderId">
+        <div class="flex gap-2 items-center mt-2">
+          <button @click="emitNFe()" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Emitir NF-e</button>
+          <template x-if="lastInvoice && lastInvoice.uuid"><a :href="'/nfe?tab=list'" class="text-xs text-slate-400 hover:underline">Ver NF-e</a></template>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+
+<script>
+  function pos(){
+      return {
+      search: '', products: [], items: [], customers: [], sellers: [], orderId: null, customer: '', seller: '',
+      paymentMethods: [], payment_method: '', showPaymentSelect: false, confirmedOrderId: '', lastInvoice: null,
+      cardBrands: [], cardFees: [], cardBrand: '', installments: 1,
+      orderDiscount: 0, orderDiscountAbs: 0,
+      productNameCache: {}, productStock: {},
+      installments: 1,
+      orderType: 'carrinho',
+      orderStatus: 'DRAFT',
+      salesOrder: '',
+      isCardCredit(){
+        const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method);
+        if (!pm) return false;
+        const t = (pm.type||'').toLowerCase();
+        const name = (pm.name||'').toLowerCase();
+        return t === 'card_credit' || name.includes('crédito') || name.includes('credito');
+      },
+      canFinalize(){
+        if (!Array.isArray(this.items) || this.items.length === 0) return false;
+        for (const it of this.items) {
+          const q = parseFloat(it?.quantity ?? 0);
+          const price = parseFloat(it?.unit_price ?? 0);
+          if (!(q > 0) || !(price > 0)) return false;
+          const st = this.productStock[it.product];
+          if (st !== undefined && st !== null) {
+            const stn = parseFloat(st);
+            if (!isNaN(stn) && q > stn) return false;
+          }
+        }
+        // Requer selecionar cliente e forma de pagamento
+        if (!this.customer) return false;
+        if (!this.payment_method) return false;
+        return true;
+      },
+      finalizeDisabledReason(){
+        if (!Array.isArray(this.items) || this.items.length === 0) return 'Adicione ao menos um item';
+        for (const it of this.items) {
+          const q = parseFloat(it?.quantity ?? 0);
+          const price = parseFloat(it?.unit_price ?? 0);
+          if (!(q > 0) || !(price > 0)) return 'Itens com quantidade/preço inválidos';
+          const st = this.productStock[it.product];
+          if (st !== undefined && st !== null) {
+            const stn = parseFloat(st);
+            if (!isNaN(stn) && q > stn) return 'Ajuste as quantidades ao estoque disponível';
+          }
+        }
+        if (!this.customer) return 'Defina o cliente';
+        if (!this.payment_method) return 'Defina a forma de pagamento';
+        return '';
+      },
+      formatMoney(v){ try { return 'R$ ' + (parseFloat(v)||0).toFixed(2); } catch(e) { return 'R$ 0,00'; } },
+      formatQty(v){ const n = parseFloat(v); if (isNaN(n)) return '-'; return Math.round(n).toString(); },
+      async init(){
+        // NÃ£o carregar todos os produtos por padrÃ£o para evitar lentidÃ£o
+        try { const cs = await Http.fetchJson('/api/people/customers/?ordering=name'); this.customers = cs.results||cs||[]; } catch(e){}
+        try { const ss = await Http.fetchJson('/api/people/sellers/?ordering=name'); this.sellers = ss.results||ss||[]; } catch(e){}
+        // Preencher vendedor automaticamente conforme login
+        try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e){}
+        // Carregar formas de pagamento
+        try { const pms = await Http.fetchJson('/api/payment/methods/?ordering=name'); this.paymentMethods = pms.results||pms||[]; } catch(e){}
+        // Carregar bandeiras e tiers de parcelas (cartão de crédito)
+        try { const brands = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); this.cardBrands = brands.results||brands||[]; } catch(e){}
+        try { const fees = await Http.fetchJson('/api/payment/card-fees/?type=card_credit'); this.cardFees = fees.results||fees||[]; } catch(e){}
+      },
+      async loadProducts(){
+        const p = new URLSearchParams(); if (this.search && this.search.trim().length >= 2) p.set('search', this.search.trim()); else { this.products=[]; return; } p.set('ordering','name');
+        try {
+          const data = await Http.fetchJson(`/api/catalog/products/?${p.toString()}`);
+          this.products = (data && (data.results||data)) || [];
+          // Cache nomes para exibiÃ§Ã£o de itens carregados do pedido
+          (this.products||[]).forEach(pr=>{ if (pr && pr.uuid) this.productNameCache[pr.uuid] = pr.name; });
+          // Buscar estoque dos produtos listados (cache por uuid)
+          for (const pr of (this.products||[])) { if (pr && pr.uuid && this.productStock[pr.uuid] === undefined) { this.fetchStock(pr.uuid); } }
+        } catch(e){ Http.toast(e.message||'Erro ao carregar produtos','error'); }
+      },
+      async loadOrderItems(){
+        if (!this.orderId) return;
+        try {
+          const arr = await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/`);
+          this.items = (arr||[]).map(it=>({
+            uuid: it.uuid,
+            product: it.product,
+            name: this.productNameCache[it.product] || ('#'+it.product),
+            quantity: parseFloat(it.quantity||0),
+            unit_price: parseFloat(it.unit_price||0),
+            discount_percent: parseFloat(it.discount_percent||0),
+            warn: ''
+          }));
+          // Resolver nomes de produtos ausentes no cache
+          for (const it of this.items) { if (!this.productNameCache[it.product]) { this.fetchProductName(it.product).then(nm=>{ it.name = nm; }); } }
+        } catch(e){ /* silencioso */ }
+      },
+      async fetchProductName(uuid){
+        try { const pr = await Http.fetchJson(`/api/catalog/products/${uuid}/`); if (pr && pr.name) { this.productNameCache[uuid] = pr.name; return pr.name; } } catch(e){}
+        return '#'+uuid;
+      },
+      async fetchStock(uuid){
+        try { const st = await Http.fetchJson(`/api/stock/?product__uuid=${uuid}`); const rows = st.results||st||[]; const q = (rows[0] && rows[0].quantity_current) || 0; this.$nextTick(()=>{ this.productStock[uuid] = q; }); } catch(e){ this.productStock[uuid] = null; }
+      },
+      async ensureOrder(){
+        if (this.orderId) return;
+        try {
+          // garantir vendedor
+          if (!this.seller) {
+            try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e) {}
+          }
+          if (!this.seller) { throw new Error('Defina um vendedor antes de criar o pedido.'); }
+          // Build payment metadata to persist method details (name/type/fees/installments)
+          let payment_meta = null;
+          try {
+            const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method);
+            if (pm) {
+              // Prefer per-installment fee (computed) when card credit is selected
+              const computedFee = this.isCardCredit() ? this.feePercent() : (pm.fee_percent||0);
+              // Absolute fee value computed from the base (feeValue()) - format to 2 decimals
+              const computedFeeValue = parseFloat((this.feeValue() || 0).toFixed(2));
+              payment_meta = { uuid: pm.uuid, name: pm.name, type: pm.type, fee_percent: parseFloat(computedFee||0), fee_value: computedFeeValue };
+              if (this.isCardCredit()) { payment_meta.installments = this.installments || 1; payment_meta.card_brand = this.cardBrand || null; }
+            }
+          } catch(e){}
+          const o = await Http.fetchJson('/api/sale/orders/', { method:'POST', body: JSON.stringify({ customer: this.customer||null, seller: this.seller||null, payment_method: this.payment_method||null, order_type: this.orderType, order_discount_abs: parseFloat(this.orderDiscountAbs||0), payment_metadata: payment_meta })});
+          if (!o || !o.uuid) { throw new Error('Falha ao criar pedido.'); }
+          this.orderId = o.uuid;
+          this.orderStatus = o.status || 'DRAFT';
+          // Nota: não carregamos items do servidor aqui para evitar sobrescrever o estado local (itens no carrinho ainda não foram persistidos)
+        }
+        catch(e){ Http.toast(e.message||'Erro ao criar pedido','error'); throw e; }
+      },
+      async addItem(p){
+        // Adiciona item apenas localmente — a ordem no backend será criada apenas ao finalizar
+        const unit = parseFloat(p.sale_price||0) || 0;
+        const quantity = 1;
+        // Bloquear se estoque informado for 0
+        const st = this.productStock[p.uuid]; if (st !== undefined && st !== null && parseFloat(st) <= 0) { Http.toast('Produto sem estoque','error'); return; }
+        // Se já existe o produto no carrinho, incrementar quantidade localmente
+        const idx = (this.items||[]).findIndex(it => String(it.product) === String(p.uuid));
+        if (idx !== -1) {
+          this.items[idx].quantity = (parseFloat(this.items[idx].quantity||0) + 1);
+          // não há orderId/uuid — syncItem não chamará API
+          await this.syncItem(idx);
+        } else {
+          this.items.push({ uuid: null, product: p.uuid, name: p.name, quantity: quantity, unit_price: unit, discount_percent: 0, warn: '' });
+        }
+      },
+      async syncItem(idx){
+        const it = this.items[idx]; if (!it || !this.orderId || !it.uuid) return;
+        // Validação: impedir quantidade maior que estoque atual (se conhecido)
+        let stock = this.productStock[it.product];
+        if (stock === undefined) { try { await this.fetchStock(it.product); } catch(e) {} stock = this.productStock[it.product]; }
+        const q = parseFloat(it.quantity||0);
+        const st = parseFloat(stock);
+        if (stock !== null && stock !== undefined && !isNaN(st) && q > st) {
+          if (st <= 0) {
+            Http.toast('Sem estoque', 'error');
+            it.warn = 'Sem estoque';
+            it.quantity = 0;
+          } else {
+            Http.toast('Estoque insuficiente', 'error');
+            it.warn = 'Quantidade ajustada para 1 (estoque insuficiente)';
+            it.quantity = 1;
+          }
+          try {
+            await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'PATCH', body: JSON.stringify({ quantity: it.quantity, discount_percent: it.discount_percent||0 })});
+          } catch(e) { /* manter aviso visual; sincroniza tentativa na próxima edição */ }
+          return;
+        }
+        try {
+          await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, {
+            method: 'PATCH',
+            body: JSON.stringify({ quantity: it.quantity, discount_percent: it.discount_percent||0 })
+          });
+          it.warn = '';
+        }
+        catch(e){ Http.toast(e.message||'Erro ao atualizar item','error'); }
+      },
+      async removeItem(idx){
+        const it = this.items[idx]; if (!it) return;
+        this.items.splice(idx,1);
+        if (this.orderId && it.uuid) {
+          try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'DELETE' }); }
+          catch(e){ Http.toast(e.message||'Erro ao remover item','error'); }
+        }
+      },
+      total(){
+        const base = this.baseTotal();
+        const fee = this.feeValue();
+        return base + fee;
+      },
+      itemsSubtotal(){
+        return this.items.reduce((s, it)=> s + (parseFloat(it.quantity||0)*parseFloat(it.unit_price||0)), 0);
+      },
+      baseTotal(){
+        const subtotal = this.items.reduce((s, it)=> s + (parseFloat(it.quantity||0)*parseFloat(it.unit_price||0) * (1 - (parseFloat(it.discount_percent||0)/100))), 0);
+        const dPct = Math.max(0, parseFloat(this.orderDiscount||0) || 0);
+        const afterPct = subtotal * (1 - (dPct/100));
+        const dAbs = Math.max(0, parseFloat(this.orderDiscountAbs||0) || 0);
+        const afterAbs = Math.max(0, afterPct - dAbs);
+        return Math.max(0, afterAbs);
+      },
+      discountApplied(){
+        const sub = this.itemsSubtotal();
+        const base = this.baseTotal();
+        return Math.max(0, sub - base);
+      },
+      feePercent(){
+        // Only applies for card credit with a selected brand and valid installments within tier bounds
+        if (!this.isCardCredit()) return 0;
+        const brandId = String(this.cardBrand||'');
+        if (!brandId) return 0;
+        const tiers=(this.cardFees||[]).filter(t=> String(t.brand)===brandId && ((t.type||'').toLowerCase()==='card_credit'));
+        if (!tiers.length) return 0;
+        const n = parseInt(this.installments||1, 10) || 1;
+        for (const t of tiers) {
+          const min=parseInt(t.installments_min||1,10), max=parseInt(t.installments_max||1,10);
+          if (n>=min && n<=max) return parseFloat(t.fee_percent||0)||0;
+        }
+        return 0;
+      },
+      feeValue(){
+        const pct = this.feePercent();
+        if (!(pct>0)) return 0;
+        const base = this.baseTotal();
+        return base * (pct/100);
+      },
+      async syncPaymentMethod(){ if (!this.orderId || !this.payment_method) return; try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'PATCH', body: JSON.stringify({ payment_method: this.payment_method })}); } catch(e){ Http.toast(e.message||'Falha ao definir forma de pagamento','error'); } },
+      togglePayment(){ this.showPaymentSelect = !this.showPaymentSelect; },
+      paymentMethodName(){ const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method); return pm ? `Forma: ${pm.name}` : 'Selecionar forma de pagamento'; },
+      sellerDisplay(){
+        const s = (this.sellers||[]).find(x=>x.uuid===this.seller);
+        if (!s) return '(não definido)';
+        try {
+          const uid = (s.user !== undefined && s.user !== null) ? String(s.user) : '';
+          if (uid) return `${s.name} • user#${uid}`;
+          return s.name || '(não definido)';
+        } catch(e) {
+          return s.name || '(não definido)';
+        }
+      },
+      async copySalesOrder(){
+        try{
+          const so = String(this.salesOrder||'').trim();
+          if (!so) return;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(so);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = so; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+          }
+          Http.toast('Número do pedido copiado','success');
+        }catch(e){ Http.toast('Não foi possível copiar','error'); }
+      },
+      async setOrderType(t){
+        const v = (String(t||'').toLowerCase()==='orcamento') ? 'orcamento' : 'carrinho';
+        this.orderType = v;
+        if (this.orderId) {
+          try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'PATCH', body: JSON.stringify({ order_type: v })}); } catch(e) {}
+        }
+      },
+      isCardCredit(){ const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method); if(!pm) return false; const t=(pm.type||'').toLowerCase(); const n=(pm.name||'').toLowerCase(); return t==='card_credit' || n.includes('crédito') || n.includes('credito'); },
+      availableInstallments(){
+        if (!this.cardBrand) return [];
+        const tiers=(this.cardFees||[]).filter(t=> String(t.brand)===String(this.cardBrand) && ((t.type||'').toLowerCase()==='card_credit'));
+        if(!tiers.length) return [];
+        const set=new Set();
+        tiers.forEach(t=>{ const min=parseInt(t.installments_min||1,10), max=parseInt(t.installments_max||1,10); for(let i=min;i<=max;i++){ set.add(i) } });
+        const arr=Array.from(set).sort((a,b)=>a-b);
+        return arr;
+      },
+      installmentLabel(n){
+        const brandId = String(this.cardBrand||'');
+        const tiers=(this.cardFees||[]).filter(t=> String(t.brand)===brandId && ((t.type||'').toLowerCase()==='card_credit'));
+        let fee = null;
+        for (const t of tiers){
+          const min=parseInt(t.installments_min||1,10), max=parseInt(t.installments_max||1,10);
+          if (n>=min && n<=max){ fee = t.fee_percent; break; }
+        }
+        const f = (fee!=null) ? (parseFloat(fee)||0).toFixed(2) + '%' : '';
+        return f ? (n + 'x - ' + f) : (n + 'x');
+      },
+      onCardBrandChange(){
+        const list = this.availableInstallments();
+        if (list.length === 0) { this.installments = 1; }
+        else if (!list.includes(this.installments)) { this.installments = list[0]; }
+      },
+      async applyOrderDiscount(){ const d = parseFloat(this.orderDiscount||0); if (isNaN(d) || d<0) { this.orderDiscount = 0; } },
+      async applyOrderDiscountAbs(){ const v = parseFloat(this.orderDiscountAbs||0); if (isNaN(v) || v<0) { this.orderDiscountAbs = 0; } },
+      // Aplica desconto absoluto somente ao nível do pedido (orderDiscountAbs).
+      // Não altera os descontos por item automaticamente — esses permanecem controlados manualmente.
+      async applyOrderDiscountAbs(){
+        const v = parseFloat(this.orderDiscountAbs||0);
+        if (isNaN(v) || v < 0) { this.orderDiscountAbs = 0; }
+        // baseTotal() já usa this.orderDiscountAbs para reduzir o total, então não precisamos fazer mais nada aqui
+      },
+      async finalize(){
+        // Validar requisitos antes de criar a ordem
+        if (!Array.isArray(this.items) || this.items.length === 0) { Http.toast('Adicione items antes de finalizar','error'); return; }
+        if (!this.customer) { Http.toast('Defina o cliente','error'); return; }
+        if (!this.payment_method) { Http.toast('Defina a forma de pagamento','error'); return; }
+        // Garantir vendedor
+        if (!this.seller) {
+          try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e) {}
+        }
+        if (!this.seller) { Http.toast('Defina um vendedor antes de criar o pedido.','error'); return; }
+
+        // Criar a order no backend
+        let createdOrder = null;
+        try {
+          // build payment metadata (use computed feePercent for card installments)
+          let pm_meta = null;
+          try {
+            const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method);
+            if (pm) {
+              const computedFee = this.isCardCredit() ? this.feePercent() : (pm.fee_percent||0);
+              // Absolute fee value computed from the base (feeValue()) - format to 2 decimals
+              const computedFeeValue = parseFloat((this.feeValue() || 0).toFixed(2));
+              pm_meta = { uuid: pm.uuid, name: pm.name, type: pm.type, fee_percent: parseFloat(computedFee||0), fee_value: computedFeeValue };
+              if (this.isCardCredit()) { pm_meta.installments = this.installments || 1; pm_meta.card_brand = this.cardBrand || null; }
+            }
+          } catch(e){}
+          createdOrder = await Http.fetchJson('/api/sale/orders/', { method:'POST', body: JSON.stringify({ customer: this.customer||null, seller: this.seller||null, payment_method: this.payment_method||null, order_type: this.orderType, order_discount_abs: parseFloat(this.orderDiscountAbs||0), payment_metadata: pm_meta })});
+           if (!createdOrder || !createdOrder.uuid) throw new Error('Falha ao criar pedido');
+           this.orderId = createdOrder.uuid;
+           this.orderStatus = createdOrder.status || 'DRAFT';
+         } catch(e) {
+           Http.toast(e.message||'Erro ao criar pedido','error'); return;
+         }
+
+         // Agora persistir os itens locais no servidor. Se falhar, remover a order criada (rollback)
+         try {
+           for (let i = 0; i < this.items.length; i++) {
+             const it = this.items[i];
+             // if item already has uuid (unlikely), skip or patch
+             if (it.uuid && this.orderId) continue;
+             const payLoad = { product: it.product, quantity: it.quantity, unit_price: it.unit_price };
+             if (it.discount_percent) payLoad.discount_percent = it.discount_percent;
+             const resp = await Http.fetchJson(`/api/sale/orders/${this.orderId}/add-item/`, { method:'POST', body: JSON.stringify(payLoad) });
+             if (!resp || !resp.uuid) throw new Error('Falha ao adicionar item: ' + (it.name || it.product));
+             // atualizar uuid local
+             this.items[i].uuid = resp.uuid;
+           }
+
+          // Depois de itens criados, aplicar/confirmar a order (incluindo metadata e desconto absoluto)
+          try {
+            const pm_meta = (function(self){
+              try {
+                const pm = (self.paymentMethods||[]).find(x=>x.uuid===self.payment_method);
+                if (pm) {
+                  const computedFee = self.isCardCredit() ? self.feePercent() : (pm.fee_percent||0);
+                  // Absolute fee value computed from the base (feeValue()) - format to 2 decimals
+                  const computedFeeValue = parseFloat((self.feeValue() || 0).toFixed(2));
+                  const m = { uuid: pm.uuid, name: pm.name, type: pm.type, fee_percent: parseFloat(computedFee||0), fee_value: computedFeeValue };
+                  if (self.isCardCredit()) { m.installments = self.installments || 1; m.card_brand = self.cardBrand || null; }
+                  return m;
+                }
+              } catch(e){}
+              return null;
+            })(this);
+            await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'PATCH', body: JSON.stringify({ payment_method: this.payment_method, payment_metadata: pm_meta, order_discount_abs: parseFloat(this.orderDiscountAbs||0), customer: this.customer, seller: this.seller })});
+          } catch(e) {}
+          try { const res = await Http.fetchJson(`/api/sale/orders/${this.orderId}/action/`, { method:'POST', body: JSON.stringify({ action: 'confirm' })});
+            Http.toast('Pedido finalizado', 'success');
+            this.confirmedOrderId = this.orderId;
+            this.orderStatus = (res && res.status) ? res.status : 'CONFIRMED';
+            this.salesOrder = (res && res.sales_order) ? res.sales_order : (this.salesOrder || '');
+          } catch(e) {
+            // rollback: remover a ordem criada para não deixar rascunho parcial no servidor
+            try { if (this.orderId) await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'DELETE' }); } catch(ex) {}
+            this.orderId = null;
+            Http.toast(e.message||'Erro ao processar itens/confirmar pedido','error');
+          }
+        } catch(e) {
+          Http.toast(e.message||'Erro ao criar pedido','error');
+        }
+      },
+      async deleteOrder(){
+        if (!this.orderId) return;
+        if ((this.orderStatus||'DRAFT') !== 'DRAFT') { Http.toast('Não é possível excluir após confirmação','error'); return; }
+        const self = this;
+        const onConfirm = async function(){
+          try {
+            await Http.fetchJson(`/api/sale/orders/${self.orderId}/`, { method:'DELETE' });
+            Http.toast('Venda excluída','success');
+            self.resetOrder();
+          } catch(e){ Http.toast(e.message||'Erro ao excluir venda','error'); }
+        };
+        window.dispatchEvent(new CustomEvent('show-confirm', {
+          detail: {
+            title: 'Excluir venda',
+            message: 'Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.',
+            type: 'danger',
+            onConfirm
+          }
+        }));
+      },
+      orderTypeLabel(){ return this.orderType==='orcamento' ? 'Orçamento' : 'Carrinho'; },
+      async emitNFe(){ if (!this.confirmedOrderId) return; try { const inv = await Http.fetchJson(`/api/nfe/invoices/from-order/${this.confirmedOrderId}/`, { method:'POST' }); this.lastInvoice = inv; Http.toast('NF-e solicitada', 'success'); } catch(e){ Http.toast(e.message||'Falha ao emitir NF-e','error'); } },
+      resetOrder(){ this.search=''; this.products=[]; this.items=[]; this.orderId=null; this.confirmedOrderId=''; this.lastInvoice=null; this.productNameCache={}; this.productStock={}; }
+    }
+  }
+ </script>
+ <!-- Normalizador de acentuação (dentro do bloco para garantir execução) -->
+ <script src="/static/js/sales-fix.js"></script>
+{% endblock %}

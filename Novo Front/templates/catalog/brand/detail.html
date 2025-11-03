@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Marca · MVPSale{% endblock %}
+
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Catálogo" u1="/catalog" b2="Marcas" u2="/catalog/brands" b3="Detalhe" %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Detalhe da Marca</h1>
+    <p class="text-slate-400 text-sm">Visualize e edite as informações da marca.</p>
+  </div>
+  <a href="/catalog/brands" class="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-2 transition">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+    Voltar
+  </a>
+</div>
+
+<div class="bg-slate-800/40 border border-slate-700 rounded-2xl shadow-lg backdrop-blur-md p-6 max-w-3xl">
+  <div id="brandDetail" class="text-center py-10 text-slate-400">
+    <i data-lucide="badge" class="w-12 h-12 mx-auto mb-3 text-slate-500"></i>
+    <p class="text-sm">Carregando informações da marca...</p>
+  </div>
+</div>
+
+<script>
+(async function(){
+  const parts = location.pathname.split('/');
+  const uuid = parts[parts.length - 2];
+  if (!uuid) return;
+
+  try {
+    const b = await Http.fetchJson(`/api/catalog/brands/${uuid}/`);
+    const el = document.getElementById('brandDetail');
+    el.innerHTML = `
+      <div class="text-left space

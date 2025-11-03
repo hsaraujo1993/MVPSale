@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "test:e2e": "npx playwright test",
+    "e2e:seed": "npx playwright test tests/seed.e2e.ts --reporter=list",
+    "e2e:full": "npx playwright test tests/seed.e2e.ts tests/e2e-login-cart.spec.ts tests/e2e-checkout-nfe.spec.ts --reporter=list"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.56.1"
+  }
+}

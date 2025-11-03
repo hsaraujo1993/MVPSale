@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}NFe · MVPSale{% endblock %}
+{% block content %}
+{% if request.GET.tab == 'list' %}
+  {% include "partials/breadcrumb.html" with b1="NFe" u1="/nfe" b2="Fornecedor" %}
+  {% include "nfe/supplier_invoices/list.html" %}
+{% else %}
+  {% include "partials/breadcrumb.html" with b1="NFe" u1="/nfe" b2="Fornecedor" b3="Importar XML" %}
+  {% include "nfe/supplier_invoices/form.html" %}
+{% endif %}
+{% endblock %}

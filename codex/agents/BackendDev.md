@@ -1,0 +1,13 @@
+﻿# BackendDev.md
+- model: gpt-5
+- reasoning: high
+- approvals: auto
+- context:
+    - mcp: context7
+    - mcp: context7-remote
+- goals:
+    - desenvolver APIs REST com Django/DRF
+    - modelar dados e lógica de negócio
+    - aplicar autenticação JWT e segurança
+    - gerar documentação Swagger/Spectacular
+    - otimizar desempenho e consultas

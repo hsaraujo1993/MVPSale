@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Caixa · MVPSale{% endblock %}
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Caixa" %}
+<h1 class="text-2xl font-semibold mb-4">Caixa</h1>
+
+<div id="statusBox" class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 mb-4">
+  <h2 class="font-medium mb-2">Status</h2>
+  <div id="statusText" class="text-sm text-slate-300">Carregando…</div>
+  </div>
+
+<div id="openBox" class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 mb-4 hidden">
+  <h3 class="font-medium mb-2">Abrir Caixa</h3>
+  <form id="openForm" class="flex gap-2 items-end">
+    <div>
+      <label class="block text-sm mb-1">Valor de abertura</label>
+      <input name="opening_amount" type="number" step="0.01" class="px-3 py-2 rounded bg-slate-900 border border-slate-700" value="0" />
+    </div>
+    <button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Abrir</button>
+  </form>
+  </div>
+
+<div id="closeBox" class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 mb-4 hidden">
+  <h3 class="font-medium mb-2">Fechar Caixa</h3>
+  <form id="closeForm" class="flex gap-2 items-end">
+    <div>
+      <label class="block text-sm mb-1">Valor de fechamento</label>
+      <input name="closing_amount" type="number" step="0.01" class="px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <button class="bg-rose-600 hover:bg-rose-500 transition text-white rounded px-3 py-2">Fechar</button>
+  </form>
+  </div>
+
+<script>
+  const statusText = document.getElementById('statusText');
+  const openBox = document.getElementById('openBox');
+  const closeBox = document.getElementById('closeBox');
+  let currentSessionUUID = null;
+  async function refresh(){
+    try{
+      const s = await Http.fetchJson('/api/cashier/sessions/current/');
+      currentSessionUUID = s.uuid;
+      statusText.textContent = `Aberto em ${s.opened_at} • Abertura R$ ${s.opening_amount || '0,00'}`;
+      openBox.classList.add('hidden');
+      closeBox.classList.remove('hidden');
+    }catch(err){
+      currentSessionUUID = null;
+      statusText.textContent = 'Fechado';
+      openBox.classList.remove('hidden');
+      closeBox.classList.add('hidden');
+    }
+  }
+  document.getElementById('openForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const form = e.currentTarget || e.target;
+    const submitBtn = form.querySelector('button[type="submit"], button');
+    FormUtils.clearFieldErrors(form);
+    const fd = new FormData(form);
+    const openingVal = parseFloat(fd.get('opening_amount')||'0');
+    UI.confirm(`Abrir caixa com valor inicial R$ ${openingVal.toFixed(2)}?`, async ()=>{
+      FormUtils.setLoading(submitBtn, true);
+      const payload = { opening_amount: openingVal };
+      try{
+        await Http.fetchJson('/api/cashier/sessions/open/', { method:'POST', body: JSON.stringify(payload) });
+        Http.toast('Caixa aberto', 'success');
+        refresh();
+      }catch(err){ if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message||'Erro ao abrir caixa', 'error'); }
+      finally{ FormUtils.setLoading(submitBtn, false); }
+    }, 'Abrir Caixa');
+  });
+  document.getElementById('closeForm').addEventListener('submit', async (e)=>{
+    e.preventDefault(); if(!currentSessionUUID) return;
+    const form = e.currentTarget || e.target;
+    const submitBtn = form.querySelector('button[type="submit"], button');
+    FormUtils.clearFieldErrors(form);
+    const fd = new FormData(form);
+    const closingVal = parseFloat(fd.get('closing_amount')||'0');
+    UI.confirm(`Fechar caixa com valor de fechamento R$ ${closingVal.toFixed(2)}?`, async ()=>{
+      FormUtils.setLoading(submitBtn, true);
+      const payload = { closing_amount: closingVal };
+      try{
+        await Http.fetchJson(`/api/cashier/sessions/${currentSessionUUID}/close/`, { method:'POST', body: JSON.stringify(payload) });
+        Http.toast('Caixa fechado', 'success');
+        refresh();
+      }catch(err){ if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message||'Erro ao fechar caixa', 'error'); }
+      finally{ FormUtils.setLoading(submitBtn, false); }
+    }, 'Fechar Caixa');
+  });
+  refresh();
+</script>
+{% endblock %}

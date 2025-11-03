@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Configurações · MVPSale{% endblock %}
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Configurações" %}
+<h1 class="text-2xl font-semibold mb-4">Perfil</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+    <h2 class="font-medium mb-3">Informações da Conta</h2>
+    <form id="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+      <div class="md:col-span-2"><span class="text-slate-400">Usuário:</span> <span class="text-slate-200">{{ user.username }}</span></div>
+      <div>
+        <label for="first_name" class="block text-sm mb-1">Nome</label>
+        <input id="first_name" name="first_name" value="{{ user.first_name }}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+      </div>
+      <div>
+        <label for="last_name" class="block text-sm mb-1">Sobrenome</label>
+        <input id="last_name" name="last_name" value="{{ user.last_name }}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+      </div>
+      <div class="md:col-span-2">
+        <label for="email" class="block text-sm mb-1">Email</label>
+        <input id="email" name="email" type="email" value="{{ user.email }}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+      </div>
+      <div class="md:col-span-2">
+        <button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Salvar</button>
+      </div>
+    </form>
+  </div>
+  <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+    <h2 class="font-medium mb-3">Ações</h2>
+    <div class="flex gap-2">
+      <a href="/password_change/" class="inline-flex items-center bg-slate-700 hover:bg-slate-600 text-white text-sm px-3 py-2 rounded">Alterar Senha</a>
+      <a href="/logout/" class="inline-flex items-center bg-rose-600 hover:bg-rose-500 text-white text-sm px-3 py-2 rounded">Sair</a>
+    </div>
+    <p class="text-xs text-slate-400 mt-2">Para editar dados de perfil, entre em contato com o administrador.</p>
+  </div>
+</div>
+<script>
+  document.getElementById('profileForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const form = e.currentTarget || e.target;
+    const submitBtn = form.querySelector('button[type="submit"], button');
+    FormUtils.clearFieldErrors(form);
+    FormUtils.setLoading(submitBtn, true);
+    const fd = new FormData(form);
+    const payload = {
+      first_name: fd.get('first_name') || '',
+      last_name: fd.get('last_name') || '',
+      email: fd.get('email') || ''
+    };
+    try{
+      await Http.fetchJson('/api/people/users/me/', { method:'PATCH', body: JSON.stringify(payload) });
+      Http.toast('Perfil atualizado', 'success');
+    }catch(err){
+      if(err && err.data) FormUtils.showFieldErrors(form, err.data);
+      else Http.toast(err.message || 'Erro ao atualizar perfil', 'error');
+    } finally { FormUtils.setLoading(submitBtn, false); }
+  });
+</script>
+{% endblock %}

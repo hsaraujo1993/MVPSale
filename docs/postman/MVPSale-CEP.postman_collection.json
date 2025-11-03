@@ -1,0 +1,105 @@
+{
+  "info": {
+    "name": "MVPSale - CEP",
+    "_postman_id": "a9e3b6b2-2fcb-4d7b-9b2e-cep000000001",
+    "description": "Coleção para consulta de CEP (Webmania/ViaCEP) no MVPSale.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Consultar CEP (público) - curto",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/cep/?cep={{cep}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "cep"
+          ],
+          "query": [
+            {
+              "key": "cep",
+              "value": "{{cep}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Consultar CEP (público) - legado",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/people/cep/?cep={{cep}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "people",
+            "cep"
+          ],
+          "query": [
+            {
+              "key": "cep",
+              "value": "{{cep}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Obter token JWT (opcional)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/token/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "token"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "cep",
+      "value": "05426-100"
+    },
+    {
+      "key": "username",
+      "value": "dev"
+    },
+    {
+      "key": "password",
+      "value": "dev12345"
+    }
+  ]
+}
+

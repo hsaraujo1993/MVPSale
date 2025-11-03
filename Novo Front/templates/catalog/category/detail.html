@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Categoria · MVPSale{% endblock %}
+
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Catálogo" u1="/catalog" b2="Categorias" u2="/catalog/categories" b3="Detalhe" %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Detalhe da Categoria</h1>
+    <p class="text-slate-400 text-sm">Visualize e edite as informações da categoria selecionada.</p>
+  </div>
+  <a href="/catalog/categories" class="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-2 transition">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+    Voltar
+  </a>
+</div>
+
+<div class="bg-slate-800/40 border border-slate-700 rounded-2xl shadow-lg backdrop-blur-md p-6 max-w-3xl">
+  <div id="catDetail" class="text-center py-10 text-slate-400">
+    <i data-lucide="box" class="w-12 h-12 mx-auto mb-3 text-slate-500"></i>
+    <p class="text-sm">Carregando detalhes da categoria...</p>
+  </div>
+</div>
+
+<script>
+(async function(){
+  const pathParts = location.pathname.split('/');
+  const uuid = pathParts[pathParts.length - 2] || null;
+  if (!uuid) return;
+
+  try {
+    const c = await Http.fetchJson(`/api/catalog/categories/${uuid}/`);
+    const el = document.getElementById('catDetail');
+    el.innerHTML = `
+      <div class="text-left space-y-2">
+        <div class="text-sm"><span class="text-slate-400">Nome:</span> <span class="text-slate-100 font-medium">${c.name}</span></div>
+        <div class="text-sm"><span class="text-slate-400">Slug:</span> <span class="text-slate-100 font-medium">${c.slug||''}</span></div>
+        <div class="text-sm"><span class="text-slate-400">Ativo:</span> <span class="text-slate-100 font-medium">${c.active ? 'Sim' : 'Não'}</span></div>
+      </div>
+
+      <div class="mt-5 flex gap-2 justify-end">
+        <button id="editCat" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm">Editar</button>
+        <button id="delCat" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-sm">Excluir</button>
+      </div>
+    `;
+
+    document.getElementById('delCat').onclick = ()=>{
+      UI.confirm(`Excluir categoria "${c.name}"?`, async ()=>{
+        try {
+          await Http.fetchJson(`/api/catalog/categories/${uuid}/`, { method:'DELETE' });
+          Http.toast('Categoria excluída','success');
+          setTimeout(()=> location.href = '/catalog/categories', 800);
+        } catch(err){
+          Http.toast(err.message||'Erro ao excluir','error');
+        }
+      }, 'Excluir', 'danger');
+    };
+
+    document.getElementById('editCat').onclick = ()=>{
+      location.href = `/catalog/categories/${uuid}/edit/`;
+    };
+  } catch(err) {
+    document.getElementById('catDetail').innerHTML = `<p class="text-rose-400">Erro ao carregar categoria.</p>`;
+  }
+})();
+</script>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>lucide.createIcons();</script>
+{% endblock %}

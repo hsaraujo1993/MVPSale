@@ -1,0 +1,23 @@
+<nav>
+  <a href="/" class="hover:text-slate-200">Início</a>
+  {% if b1 %}
+    <span class="mx-2">/</span>
+    {% if b2 or b3 %}
+      <a href="{{ u1|default:'#' }}" class="hover:text-slate-200">{{ b1 }}</a>
+    {% else %}
+      <span class="text-slate-300">{{ b1 }}</span>
+    {% endif %}
+  {% endif %}
+  {% if b2 %}
+    <span class="mx-2">/</span>
+    {% if b3 %}
+      <a href="{{ u2|default:'#' }}" class="hover:text-slate-200">{{ b2 }}</a>
+    {% else %}
+      <span class="text-slate-300">{{ b2 }}</span>
+    {% endif %}
+  {% endif %}
+  {% if b3 %}
+    <span class="mx-2">/</span>
+    <span class="text-slate-300">{{ b3 }}</span>
+  {% endif %}
+</nav>

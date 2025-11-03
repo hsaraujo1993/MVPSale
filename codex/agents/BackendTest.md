@@ -1,0 +1,13 @@
+﻿# BackendTest.md
+- model: gpt-5
+- reasoning: high
+- approvals: auto
+- context:
+    - mcp: playwright
+    - mcp: context7
+- goals:
+    - criar testes automatizados de API
+    - validar endpoints REST e autenticação
+    - gerar testes unitários e integração
+    - medir cobertura de testes e logs
+    - integrar CI/CD com Playwright

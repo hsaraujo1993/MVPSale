@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% block title %}Pedidos - MVPSale{% endblock %}
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Pedidos" %}
+<h1 class="text-2xl font-semibold mb-4">Listagem de Pedidos</h1>
+
+<div class="flex flex-wrap items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 mb-4 backdrop-blur-sm">
+  <label for="q" class="sr-only">Buscar pedidos</label>
+  <input id="q" placeholder="Buscar pedidos..." class="flex-1 min-w-[200px] px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+
+  <label for="status" class="sr-only">Status</label>
+  <select id="status" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+    <option value="">Todos</option>
+    <option value="DRAFT">Rascunho</option>
+    <option value="CONFIRMED">Confirmado</option>
+    <option value="CANCELED">Cancelado</option>
+  </select>
+
+  <label for="ordering" class="sr-only">Ordenação</label>
+  <select id="ordering" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+    <option value="-created_at">Mais recentes</option>
+    <option value="total">Total</option>
+  </select>
+
+  <button id="applyFilters" class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">Aplicar</button>
+
+  <label class="flex items-center gap-2 text-sm text-slate-300 ml-auto">
+    <input type="checkbox" id="onlyConfirmed" class="accent-emerald-600" /> Somente confirmados
+  </label>
+
+  <div id="statusChips" class="flex items-center gap-2 text-sm">
+    <button data-status="" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Todos</button>
+    <button data-status="DRAFT" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Rascunho</button>
+    <button data-status="CONFIRMED" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Confirmado</button>
+  </div>
+</div>
+
+<div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+  <table class="min-w-full text-sm border-separate border-spacing-0">
+    <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs">
+      <tr>
+        <th class="text-left px-3 py-2 font-medium">Pedido</th>
+        <th class="text-left px-3 py-2 font-medium">Status</th>
+        <th class="text-left px-3 py-2 font-medium">Total</th>
+        <th class="text-left px-3 py-2 font-medium">Criado em</th>
+        <th class="text-left px-3 py-2 font-medium">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="rows" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition-colors duration-150"></tbody>
+  </table>
+</div>
+
+<div class="mt-4 flex items-center gap-2 text-sm">
+  <button id="prev" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1"><i data-lucide="chevron-left" class="w-4 h-4"></i> Anterior</button>
+  <span id="pageInfo" class="text-slate-400 min-w-[80px] text-center"></span>
+  <button id="next" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1">Próxima <i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+</div>
+
+<script>
+  (function(){
+    const s = { page:1, q:'', status:'', ordering:'-created_at', next:null, previous:null };
+    const rows = document.getElementById('rows');
+    const q = document.getElementById('q');
+    const status = document.getElementById('status');
+    const ordering = document.getElementById('ordering');
+    const apply = document.getElementById('applyFilters');
+    const prev = document.getElementById('prev');
+    const next = document.getElementById('next');
+    const pageInfo = document.getElementById('pageInfo');
+    const only = document.getElementById('onlyConfirmed');
+
+    apply.addEventListener('click', ()=>{ s.page=1; s.q=q.value; s.status=status.value; s.ordering=ordering.value; load(); });
+    if (only) only.addEventListener('change', ()=>{
+      if (only.checked) { status.value = 'CONFIRMED'; status.setAttribute('disabled','disabled'); }
+      else { status.removeAttribute('disabled'); if (status.value==='CONFIRMED') status.value=''; }
+      s.page=1; s.q=q.value; s.status=status.value; s.ordering=ordering.value; load();
+    });
+    prev.addEventListener('click', ()=>{ if (s.previous){ s.page--; load(); }});
+    next.addEventListener('click', ()=>{ if (s.next){ s.page++; load(); }});
+
+    function fmtMoney(v){ try { return 'R$ ' + (parseFloat(v)||0).toFixed(2); } catch(e){ return 'R$ 0,00'; } }
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function fmtDateTime(s){
+      try { const d = new Date(s); if (isNaN(d.getTime())) return String(s||''); const dd = pad2(d.getDate()), mm = pad2(d.getMonth()+1), yyyy = d.getFullYear(); const hh = pad2(d.getHours()), mi = pad2(d.getMinutes()); return `${dd}/${mm}/${yyyy} ${hh}:${mi}`; }
+      catch(e){ return String(s||''); }
+    }
+    function statusBadge(st){ const x = String(st||'').toUpperCase(); let cls='bg-slate-700 text-slate-200', txt=x; if(x==='CONFIRMED'){cls='bg-emerald-700 text-white'; txt='Confirmado';} else if(x==='DRAFT'){cls='bg-slate-600 text-white'; txt='Rascunho';} else if(x==='CANCELED'||x==='CANCELLED'){cls='bg-rose-700 text-white'; txt='Cancelado';} return `<span class="inline-block px-2 py-0.5 rounded-full ${cls}">${txt}</span>`; }
+
+    async function load(){
+      const params = new URLSearchParams();
+      params.set('page', s.page);
+      if (s.q) params.set('search', s.q);
+      if (only && only.checked) params.set('status', 'CONFIRMED'); else if (s.status) params.set('status', s.status);
+      if (s.ordering) params.set('ordering', s.ordering);
+      try{
+        const data = await Http.fetchJson(`/api/sale/orders/?${params}`);
+        rows.innerHTML = '';
+        (data.results||[]).forEach(o=>{
+          const tr = document.createElement('tr');
+          tr.dataset.uuid = o.uuid || '';
+          tr.dataset.status = String(o.status||'').toUpperCase();
+
+          const so = (o.sales_order && String(o.sales_order).length) ? o.sales_order : '-';
+          const confirmed = String(o.status||'').toUpperCase()==='CONFIRMED';
+
+          // Pedido (SO + check + copiar)
+          const td0 = document.createElement('td'); td0.className = 'px-3 py-2';
+          const copyBtnHtml = so !== '-' ? `<button type="button" class="copy-so px-2 py-1 rounded bg-slate-800 border border-slate-700 text-xs hover:bg-slate-700" data-so="${so}" title="Copiar número do pedido (Enter ou Ctrl+C)" aria-label="Copiar número do pedido">📋 Copiar</button>` : '';
+          const checkHtml = confirmed ? `<span aria-hidden="true" title="Confirmado" class="text-emerald-400 ml-1">✔</span>` : '';
+          td0.innerHTML = `<span>${so}</span> ${checkHtml} ${copyBtnHtml}`;
+          tr.appendChild(td0);
+
+          // Status, total, criado em
+          const td1 = document.createElement('td'); td1.className = 'px-3 py-2'; td1.innerHTML = statusBadge(o.status||''); tr.appendChild(td1);
+          const td2 = document.createElement('td'); td2.className = 'px-3 py-2'; td2.textContent = fmtMoney(o.total||0); tr.appendChild(td2);
+          const td3 = document.createElement('td'); td3.className = 'px-3 py-2'; td3.textContent = fmtDateTime(o.created_at||''); tr.appendChild(td3);
+
+          // Ações (Ver/Excluir)
+          const tdAct = document.createElement('td'); tdAct.className = 'px-3 py-2 space-x-3';
+          const vBtn = document.createElement('button');
+          vBtn.className = 'view-order text-sky-400 hover:underline';
+          vBtn.textContent = 'Visualizar'; vBtn.setAttribute('data-uuid', o.uuid||'');
+          const dBtn = document.createElement('button');
+          dBtn.className = 'del-order text-rose-400 hover:underline';
+          dBtn.textContent = 'Excluir'; dBtn.setAttribute('data-uuid', o.uuid||'');
+          // Revertido: só habilita excluir quando for DRAFT
+          dBtn.disabled = String(o.status||'').toUpperCase() !== 'DRAFT';
+          tdAct.appendChild(vBtn); tdAct.appendChild(dBtn); tr.appendChild(tdAct);
+
+          // Acessibilidade & atalhos de cópia
+          if (so && so !== '-') { tr.dataset.so = so; tr.tabIndex = 0; }
+
+          rows.appendChild(tr);
+        });
+        s.next = data.next; s.previous = data.previous; pageInfo.textContent = `Página ${s.page}`;
+      }catch(err){ Http.toast(err.message||'Erro ao carregar pedidos','error'); }
+    }
+
+    // Delegated handlers
+    const chips = document.getElementById('statusChips');
+    function updateChips(active){ chips.querySelectorAll('button.chip').forEach(b=>{ const on = String(b.getAttribute('data-status')||'') === String(active||''); b.className = 'chip px-3 py-1.5 rounded ' + (on ? 'bg-slate-700 text-white border border-slate-600' : 'bg-slate-900 text-slate-300 border border-slate-700'); }); }
+    chips.addEventListener('click', (e)=>{ const b = e.target && e.target.closest && e.target.closest('button.chip'); if (!b) return; const st = b.getAttribute('data-status')||''; status.value = st; if (st === 'CONFIRMED') { only.checked = true; status.setAttribute('disabled','disabled'); } else { only.checked = false; status.removeAttribute('disabled'); } updateChips(st); s.page=1; s.q=q.value; s.status=st; s.ordering=ordering.value; load(); });
+
+    rows.addEventListener('click', async (e)=>{
+      const copy = e.target && e.target.closest && e.target.closest('button.copy-so');
+      if (copy) { const val = copy.getAttribute('data-so')||''; if (!val) return; try{ if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(val); else { const ta=document.createElement('textarea'); ta.value=val; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); } Http.toast('Número do pedido copiado','success'); } catch(err){ Http.toast('Não foi possível copiar','error'); } return; }
+
+      const del = e.target && e.target.closest && e.target.closest('button.del-order');
+      if (del) { const tr = del.closest('tr'); const id = tr?.dataset?.uuid || ''; if (!id) { Http.toast('Pedido inválido','error'); return; } const st = String(tr?.dataset?.status||''); if (st !== 'DRAFT') { Http.toast('Não é possível excluir após confirmação','error'); return; } if (!confirm('Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.')) return; try { await Http.fetchJson(`/api/sale/orders/${id}/`, { method:'DELETE' }); Http.toast('Pedido excluído','success'); tr.remove(); } catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } return; }
+
+      const view = e.target && e.target.closest && e.target.closest('button.view-order');
+      if (view) { const tr = view.closest('tr'); const id = tr?.dataset?.uuid || view.getAttribute('data-uuid') || ''; if (!id) { Http.toast('Pedido inválido','error'); return; }
+        // Removed attempt to fetch `/orders/${id}/` (HTML route not provided by backend)
+        // Open the frontend detail modal instead.
+        await viewOrder(id);
+        return; }
+    });
+
+    rows.addEventListener('keydown', async (e)=>{ const tr = e.target && e.target.closest && e.target.closest('tr'); if (!tr) return; const val = tr.dataset.so || ''; if (!val) return; const isEnter = e.key === 'Enter'; const isCopy = (e.key && e.key.toLowerCase() === 'c' && (e.ctrlKey || e.metaKey)); if (!(isEnter || isCopy)) return; e.preventDefault(); try{ if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(val); else { const ta=document.createElement('textarea'); ta.value=val; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); } Http.toast('Número do pedido copiado','success'); } catch(err){ Http.toast('Não foi possível copiar','error'); } });
+
+    async function viewOrder(uuid){
+      try{
+        const o = await Http.fetchJson(`/api/sale/orders/${uuid}/`);
+        const items = (o.items||[]);
+        const nameCache = {};
+        await Promise.all(items.map(async it=>{ try{ const p = await Http.fetchJson(`/api/catalog/products/${it.product}/`); nameCache[it.product] = p.name||('#'+it.product); }catch(e){ nameCache[it.product] = '#'+it.product; } }));
+        // Fetch customer/seller names when available
+        let custName = '', sellerName = '';
+        try { if (o.customer) { const c = await Http.fetchJson(`/api/people/customers/${o.customer}/`); custName = c?.name||''; } } catch(e){}
+        try { if (o.seller) { const s = await Http.fetchJson(`/api/people/sellers/${o.seller}/`); sellerName = s?.name||''; } } catch(e){}
+        const so = (o.sales_order && String(o.sales_order).length) ? o.sales_order : '-';
+        const rowsHtml = items.map(it=>`<tr>
+          <td class="px-3 py-1">${nameCache[it.product]||('#'+it.product)}</td>
+          <td class="px-3 py-1">${parseFloat(it.quantity||0)}</td>
+          <td class="px-3 py-1">${fmtMoney(it.unit_price||0)}</td>
+          <td class="px-3 py-1">${parseFloat(it.discount_percent||0).toFixed(2)}%</td>
+          <td class="px-3 py-1">${fmtMoney(it.line_total||0)}</td>
+        </tr>`).join('');
+        const statusStr = String(o.status||'').toUpperCase();
+        const actionsHtml = (
+          '<div class="mt-3 flex items-center gap-3">' +
+          (statusStr==='DRAFT' ? (
+            '<button type="button" class="modal-confirm-order px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white" data-uuid="'+(o.uuid||'')+'">Faturar Pedido</button>' +
+            '<button type="button" class="modal-del-order px-3 py-1.5 rounded bg-rose-600 hover:bg-rose-500 text-white" data-uuid="'+(o.uuid||'')+'">Excluir</button>'
+          ) : '') +
+          (statusStr==='CONFIRMED' ? (
+            '<button type="button" class="modal-invoice-order px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white" data-uuid="'+(o.uuid||'')+'">Gerar NF-e</button>' +
+            '<button type="button" class="modal-cancel-order px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-black" data-uuid="'+(o.uuid||'')+'">Cancelar Pedido</button>'
+          ) : '') +
+          '</div>'
+        );
+        // Determine payment-related display values before rendering
+        let pmName = '', pmType = '';
+        try { if (o.payment_method) { const pm = await Http.fetchJson(`/api/payment/methods/${o.payment_method}/`); pmName = pm?.name||pm?.code||''; pmType = (pm?.type||'').toLowerCase(); } } catch(e){}
+        const condLabel = pmType === 'card_credit' ? 'Parcelado' : (pmName ? 'À vista' : '—');
+        const descTotal = parseFloat(o.discount_total||'0')||0;
+        // Show card fee % if present on order (best-effort), otherwise placeholder
+        const cardFeePct = (o.card_fee_percent !== undefined && o.card_fee_percent !== null) ? (parseFloat(o.card_fee_percent)||0) : null;
+
+        // Render a responsive two-column layout: left = order/meta, right = payment summary
+        document.getElementById('orderDetailBody').innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="text-slate-400">Cliente</div>
+                <div class="font-semibold">${custName || '-'}</div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-slate-400">Pedido</div>
+                <div class="font-semibold">${so}</div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-slate-400">Status</div>
+                <div>${statusBadge(o.status)}</div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-slate-400">Criado em</div>
+                <div>${fmtDateTime(o.created_at)}</div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-slate-400">Vendedor</div>
+                <div class="font-medium">${sellerName || '-'}</div>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="text-slate-400">Forma de pagamento</div>
+                <div class="font-semibold">${pmName || '—'}</div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-slate-400">Condição de pagamento</div>
+                <div>${condLabel}</div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-slate-400">Descontos</div>
+                <div class="flex items-center gap-2">
+                  <div class="font-semibold">${descTotal > 0 ? fmtMoney(descTotal) : 'Não'}</div>
+                  <div class="text-slate-400 text-xs">${(o.order_discount_percent !== undefined && o.order_discount_percent !== null) ? (parseFloat(o.order_discount_percent||0).toFixed(2)+"%") : ''}</div>
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-slate-400">Taxa e juros</div>
+                <div class="text-sm">
+                  ${pmType === 'card_credit' ? (cardFeePct !== null ? (parseFloat(cardFeePct).toFixed(2)+'%') : '—') : '—'}
+                </div>
+              </div>
+              <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-700">
+                <div class="text-slate-400 font-medium">Total</div>
+                <div class="text-lg font-semibold">${fmtMoney(o.total)}</div>
+              </div>
+            </div>
+          </div>
+          <div class="overflow-x-auto border border-slate-700 rounded">
+            <table class="min-w-full text-sm">
+              <thead class="bg-slate-800/60"><tr>
+                <th class="text-left px-3 py-1">Produto</th>
+                <th class="text-left px-3 py-1">Qtd</th>
+                <th class="text-left px-3 py-1">Unitário</th>
+                <th class="text-left px-3 py-1">Desc. %</th>
+                <th class="text-left px-3 py-1">Total</th>
+              </tr></thead>
+              <tbody>${rowsHtml || '<tr><td class="px-3 py-2 text-slate-400" colspan="5">Sem itens</td></tr>'}</tbody>
+            </table>
+          </div>
+        `;
+        const bodyEl = document.getElementById('orderDetailBody');
+        try { bodyEl.insertAdjacentHTML('beforeend', actionsHtml); } catch(e){}
+        document.getElementById('orderDetailWrap').classList.remove('hidden');
+      }catch(err){ Http.toast(err.message||'Erro ao carregar pedido','error'); }
+    }
+
+    // Fechar modal
+    document.getElementById('closeOrderDetail')?.addEventListener('click', ()=> document.getElementById('orderDetailWrap').classList.add('hidden'));
+    document.addEventListener('click', (e)=>{ const closeBtn = e.target && (e.target.id === 'closeOrderDetail' || (e.target.closest && e.target.closest('#closeOrderDetail'))); if (closeBtn) { const wrap = document.getElementById('orderDetailWrap'); if (wrap) wrap.classList.add('hidden'); } });
+
+    // Ações no modal (excluir, cancelar, gerar NF-e, faturar)
+    document.getElementById('orderDetailBody')?.addEventListener('click', async (e)=>{
+      const del = e.target && e.target.closest && e.target.closest('button.modal-del-order');
+      if (del) { const id = del.getAttribute('data-uuid')||''; if (!id) { Http.toast('Pedido inválido','error'); return; } if (!confirm('Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.')) return; try { await Http.fetchJson(`/api/sale/orders/${id}/`, { method:'DELETE' }); Http.toast('Pedido excluído','success'); const row = rows?.querySelector?.(`tr[data-uuid="${id}"]`); if (row) row.remove(); document.getElementById('orderDetailWrap')?.classList.add('hidden'); } catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } return; }
+
+      const cancelBtn = e.target && e.target.closest && e.target.closest('button.modal-cancel-order');
+      if (cancelBtn) { const id = cancelBtn.getAttribute('data-uuid')||''; if (!id) { Http.toast('Pedido inválido','error'); return; } if (!confirm('Deseja cancelar este pedido e retornar itens ao estoque?')) return; try { await Http.fetchJson(`/api/sale/orders/${id}/action/`, { method:'POST', body: JSON.stringify({ action: 'cancel' })}); Http.toast('Pedido cancelado','success'); const row = rows?.querySelector?.(`tr[data-uuid="${id}"]`); if (row) { row.dataset.status = 'CANCELLED'; const td1 = row.children[1]; if (td1) td1.innerHTML = statusBadge('CANCELLED'); } await viewOrder(id); } catch(err){ Http.toast(err.message||'Erro ao cancelar','error'); } return; }
+
+      const invoiceBtn = e.target && e.target.closest && e.target.closest('button.modal-invoice-order');
+      if (invoiceBtn) { const id = invoiceBtn.getAttribute('data-uuid')||''; if (!id) { Http.toast('Pedido inválido','error'); return; } if (!confirm('Deseja gerar a NF-e para este pedido?')) return; try { await Http.fetchJson(`/api/nfe/invoices/from-order/${id}/`, { method:'POST' }); Http.toast('Faturamento solicitado','success'); try { window.open('/nfe?tab=list','_blank'); } catch(e) {} } catch(err){ Http.toast(err.message||'Falha ao faturar (NF-e)','error'); } return; }
+
+      const confirmBtn = e.target && e.target.closest && e.target.closest('button.modal-confirm-order');
+      if (confirmBtn) { const id = confirmBtn.getAttribute('data-uuid')||''; if (!id) { Http.toast('Pedido inválido','error'); return; } if (!confirm('Deseja faturar este pedido?')) return; try { await Http.fetchJson(`/api/sale/orders/${id}/action/`, { method:'POST', body: JSON.stringify({ action: 'confirm' })}); Http.toast('Pedido faturado','success'); const row = rows?.querySelector?.(`tr[data-uuid="${id}"]`); if (row) { row.dataset.status = 'CONFIRMED'; const td1 = row.children[1]; if (td1) td1.innerHTML = statusBadge('CONFIRMED'); } await viewOrder(id); } catch(err){ Http.toast(err.message||'Erro ao faturar','error'); } return; }
+    });
+
+    // Inicializa
+    load();
+    updateChips(status.value||'');
+  })();
+</script>
+
+<!-- Modal de detalhe de pedido -->
+<div id="orderDetailWrap" class="hidden fixed inset-0 z-40 flex items-center justify-center">
+  <div class="absolute inset-0 bg-black/60"></div>
+  <div class="relative bg-slate-800 border border-slate-700 rounded-2xl p-4 w-full max-w-3xl shadow-lg">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-semibold">Detalhes do Pedido</h3>
+      <button id="closeOrderDetail" class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">Fechar</button>
+    </div>
+    <div id="orderDetailBody" class="space-y-2"></div>
+  </div>
+  </div>
+<!-- Ícones -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>try{lucide.createIcons();}catch(e){}</script>
+{% endblock %}
+

@@ -1,0 +1,16 @@
+<div x-data="{ open:false, title:'Confirmar', message:'Tem certeza?', onConfirm:null, type:'confirm' }" x-show="open" x-cloak
+     @show-confirm.window="title=$event.detail.title||'Confirmar'; message=$event.detail.message||'Tem certeza?'; onConfirm=$event.detail.onConfirm||null; type=$event.detail.type||'confirm'; open=true"
+     class="fixed inset-0 z-50 flex items-center justify-center">
+  <div class="absolute inset-0 bg-black/60" @click="open=false"></div>
+  <div class="relative bg-slate-800 border border-slate-700 rounded-xl p-4 w-full max-w-sm">
+    <div class="flex items-center gap-2 mb-2">
+      <div class="w-2 h-2 rounded-full" :class="{ 'bg-emerald-500': type!=='danger', 'bg-rose-500': type==='danger' }"></div>
+      <h3 class="font-medium" x-text="title"></h3>
+    </div>
+    <p class="text-sm text-slate-300 mb-4" x-text="message"></p>
+    <div class="flex justify-end gap-2">
+      <button class="px-3 py-2 rounded bg-slate-700" @click="open=false">Cancelar</button>
+      <button class="px-3 py-2 rounded text-white" :class="{ 'bg-rose-600': type==='danger', 'bg-emerald-600': type!=='danger' }" @click="onConfirm?.(); open=false">Confirmar</button>
+    </div>
+  </div>
+  </div>

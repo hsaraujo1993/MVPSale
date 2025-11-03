@@ -1,0 +1,13 @@
+﻿# FrontendDev.md
+- model: gpt-5
+- reasoning: high
+- approvals: auto
+- context:
+    - mcp: context7
+    - mcp: context7-remote
+- goals:
+    - desenvolver interfaces modernas e responsivas
+    - gerar componentes React/Tailwind
+    - integrar APIs REST no frontend
+    - otimizar performance e acessibilidade
+    - sugerir melhorias de UX e design system

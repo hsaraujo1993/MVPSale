@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Catálogo · MVPSale{% endblock %}
+{% block content %}
+{% if request.GET.tab == 'categories' %}
+  {% include "partials/breadcrumb.html" with b1="Catálogo" u1="/catalog" b2="Categorias" %}
+{% elif request.GET.tab == 'brands' %}
+  {% include "partials/breadcrumb.html" with b1="Catálogo" u1="/catalog" b2="Marcas" %}
+{% else %}
+  {% include "partials/breadcrumb.html" with b1="Catálogo" u1="/catalog" b2="Produtos" %}
+{% endif %}
+{% if request.GET.tab == 'categories' %}
+  {% include "catalog/category/list.html" %}
+{% elif request.GET.tab == 'brands' %}
+  {% include "catalog/brand/list.html" %}
+{% elif request.GET.tab == 'products' %}
+  {% include "catalog/product/list.html" %}
+{% else %}
+  {% include "catalog/product/list.html" %}
+{% endif %}
+
+<script>
+  (function(){
+    try {
+      const loc = window.location;
+      const path = loc.pathname;
+      // Corrige URLs digitadas sem '?' como "/catalogtab=categories"
+      if (!loc.search && path.startsWith('/catalogtab=')) {
+        const tab = path.split('catalogtab=')[1] || '';
+        if (tab) loc.replace('/catalog?tab=' + encodeURIComponent(tab));
+      }
+    } catch(e) { /* noop */ }
+  })();
+</script>
+{% endblock %}

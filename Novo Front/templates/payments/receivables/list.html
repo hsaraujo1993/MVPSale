@@ -1,0 +1,173 @@
+<!-- Cabeçalho -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Recebíveis</h1>
+    <p class="text-slate-400 text-sm">Acompanhe recebimentos, vencimentos e situação.</p>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
+  <div class="md:col-span-2">
+    <label class="block text-sm mb-1" for="qRec">Buscar</label>
+    <input id="qRec" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" placeholder="Referência ou ID externo" />
+  </div>
+  <div>
+    <label class="block text-sm mb-1" for="statusRec">Status</label>
+    <select id="statusRec" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+      <option value="">Todos</option>
+      <option value="PENDENTE">Em aberto</option>
+      <option value="PAGO">Liquidado</option>
+      <option value="CANCELADO">Cancelado</option>
+    </select>
+  </div>
+  <div>
+    <label class="block text-sm mb-1" for="orderingRec">Ordenar por</label>
+    <select id="orderingRec" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+      <option value="-created_at">Mais recentes</option>
+      <option value="due_date">Vencimento</option>
+      <option value="-amount">Valor (maior)</option>
+      <option value="amount">Valor (menor)</option>
+    </select>
+  </div>
+  <div class="md:col-span-2 flex items-end">
+    <button id="applyRec" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Aplicar</button>
+  </div>
+</div>
+
+<!-- Lista -->
+<div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+  <table class="min-w-full text-sm border-separate border-spacing-0">
+    <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs">
+      <tr>
+        <th class="text-left px-3 py-2 font-medium">Referência</th>
+        <th class="text-left px-3 py-2 font-medium">Forma</th>
+        <th class="text-left px-3 py-2 font-medium">Condição</th>
+        <th class="text-left px-3 py-2 font-medium">Vencimento</th>
+        <th class="text-left px-3 py-2 font-medium">Valor</th>
+        <th class="text-left px-3 py-2 font-medium">Status</th>
+        <th class="text-left px-3 py-2 font-medium">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="rowsRec" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition"></tbody>
+  </table>
+  <div id="emptyRec" class="hidden p-4 text-center text-slate-400">Nenhum recebível encontrado.</div>
+  <div id="errorRec" class="hidden p-4 text-center text-rose-400"></div>
+  <div id="loadingRec" class="hidden p-4 text-center text-slate-400">Carregando…</div>
+  <div id="pagerRec" class="hidden p-3 flex items-center gap-2 text-sm">
+    <button id="prevRec" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">« Anterior</button>
+    <span id="pageInfoRec" class="text-slate-400 min-w-[80px] text-center"></span>
+    <button id="nextRec" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Próxima »</button>
+  </div>
+</div>
+
+<!-- Modal Detalhe -->
+<div id="recDetailWrap" class="hidden fixed inset-0 z-40 flex items-center justify-center">
+  <div class="absolute inset-0 bg-black/60"></div>
+  <div class="relative bg-slate-800 border border-slate-700 rounded-2xl p-4 w-full max-w-2xl shadow-lg">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-semibold">Detalhes do Recebível</h3>
+      <button id="closeRecDetail" class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">Fechar</button>
+    </div>
+    <div id="recDetailBody" class="space-y-2"></div>
+  </div>
+</div>
+
+<script>
+  const srec = { page: 1, q: '', ordering: '-created_at', status: '', next: null, previous: null };
+  const rowsRec = document.getElementById('rowsRec');
+  const qRec = document.getElementById('qRec');
+  const statusRec = document.getElementById('statusRec');
+  const orderingRec = document.getElementById('orderingRec');
+  const applyRec = document.getElementById('applyRec');
+  const prevRec = document.getElementById('prevRec');
+  const nextRec = document.getElementById('nextRec');
+  const pageInfoRec = document.getElementById('pageInfoRec');
+  const recDetailWrap = document.getElementById('recDetailWrap');
+  const recDetailBody = document.getElementById('recDetailBody');
+  const closeRecDetail = document.getElementById('closeRecDetail');
+  const errorRec = document.getElementById('errorRec');
+  const loadingRec = document.getElementById('loadingRec');
+  const pagerRec = document.getElementById('pagerRec');
+  const emptyRec = document.getElementById('emptyRec');
+
+  function badge(st) {
+    const s = String(st || '').toUpperCase();
+    if (s === 'PAGO') return '<span class="inline-block px-2 py-0.5 rounded-full bg-emerald-700 text-white">Liquidado</span>';
+    if (s === 'PENDENTE') return '<span class="inline-block px-2 py-0.5 rounded-full bg-slate-600 text-white">Em aberto</span>';
+    if (s === 'CANCELADO') return '<span class="inline-block px-2 py-0.5 rounded-full bg-rose-700 text-white">Cancelado</span>';
+    return `<span class="inline-block px-2 py-0.5 rounded-full bg-slate-700 text-slate-200">${s}</span>`;
+  }
+
+  function fmtMoney(v){
+    const n = parseFloat(v || 0);
+    if (Number.isNaN(n)) return String(v || '');
+    return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  async function loadReceivables(){
+    loadingRec.classList.remove('hidden');
+    errorRec.classList.add('hidden');
+    emptyRec.classList.add('hidden');
+    try{
+      const params = new URLSearchParams();
+      params.set('page', srec.page);
+      if (srec.q) params.set('search', srec.q);
+      if (srec.status) params.set('status', srec.status);
+      if (srec.ordering) params.set('ordering', srec.ordering);
+      const data = await Http.fetchJson(`/api/payment/receivables/?${params.toString()}`);
+      const results = data.results || [];
+      rowsRec.innerHTML = results.map(r => `
+        <tr>
+          <td class="px-3 py-2">${r.reference || '-'}</td>
+          <td class="px-3 py-2">${r.method_display || '-'}</td>
+          <td class="px-3 py-2">${r.condition || '-'}</td>
+          <td class="px-3 py-2">${r.due_date || '-'}</td>
+          <td class="px-3 py-2">${fmtMoney(r.amount)}</td>
+          <td class="px-3 py-2">${badge(r.status)}</td>
+          <td class="px-3 py-2">
+            <button data-view data-id="${r.uuid}" class="text-sky-400 hover:underline">Visualizar</button>
+          </td>
+        </tr>`).join('');
+
+      srec.next = data.next; srec.previous = data.previous;
+      pageInfoRec.textContent = `Página ${srec.page}`;
+      pagerRec.classList.toggle('hidden', !(data.next || data.previous));
+      emptyRec.classList.toggle('hidden', results.length > 0);
+    }catch(err){
+      errorRec.textContent = err.message || 'Erro ao carregar recebíveis';
+      errorRec.classList.remove('hidden');
+    }finally{
+      loadingRec.classList.add('hidden');
+    }
+  }
+
+  rowsRec.addEventListener('click', async e => {
+    const b = e.target.closest('button[data-view]');
+    if (!b) return;
+    const id = b.getAttribute('data-id');
+    if (!id) return;
+    try {
+      const r = await Http.fetchJson(`/api/payment/receivables/${id}/`);
+      recDetailBody.innerHTML = `
+        <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+          <div><span class="text-slate-400">Referência:</span> ${r.reference || '-'}</div>
+          <div><span class="text-slate-400">Status:</span> ${badge(r.status)}</div>
+          <div><span class="text-slate-400">Valor:</span> ${fmtMoney(r.amount)}</div>
+          <div><span class="text-slate-400">Vencimento:</span> ${r.due_date || '-'}</div>
+          <div><span class="text-slate-400">Forma:</span> ${r.method_display || '-'}</div>
+          <div><span class="text-slate-400">Criado em:</span> ${r.created_at || '-'}</div>
+        </div>`;
+      recDetailWrap.classList.remove('hidden');
+    } catch (err) {
+      Http.toast(err.message || 'Erro ao carregar detalhe', 'error');
+    }
+  });
+
+  closeRecDetail?.addEventListener('click', ()=> recDetailWrap.classList.add('hidden'));
+  prevRec?.addEventListener('click', ()=>{ if (srec.page > 1) { srec.page--; loadReceivables(); } });
+  nextRec?.addEventListener('click', ()=>{ srec.page++; loadReceivables(); });
+  applyRec?.addEventListener('click', ()=>{ srec.page = 1; srec.q = qRec.value; srec.status = statusRec.value; srec.ordering = orderingRec.value; loadReceivables(); });
+
+  (async ()=> loadReceivables())();
+</script>

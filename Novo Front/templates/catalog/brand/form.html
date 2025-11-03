@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Nova Marca · MVPSale{% endblock %}
+
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Catálogo" u1="/catalog" b2="Marcas" u2="/catalog/brands" b3="Nova" %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Nova Marca</h1>
+    <p class="text-slate-400 text-sm">Adicione uma nova marca ao catálogo de produtos.</p>
+  </div>
+  <a href="/catalog/brands" class="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-2 transition">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+    Voltar
+  </a>
+</div>
+
+<div class="bg-slate-800/40 border border-slate-700 rounded-2xl shadow-lg backdrop-blur-md p-6 max-w-2xl">
+  <form id="newBrandForm" class="grid grid-cols-1 gap-4">
+    <div>
+      <label class="block text-sm mb-1 text-slate-300 font-medium">Nome</label>
+      <input name="name" placeholder="Ex: Honda, Bosch..."
+             class="w-full px-3 py-2 rounded-lg bg-slate-900/70 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+             required />
+    </div>
+    <div>
+      <label class="block text-sm mb-1 text-slate-300 font-medium">Ativo</label>
+      <select name="active"
+              class="w-full px-3 py-2 rounded-lg bg-slate-900/70 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none">
+        <option value="true" selected>Sim</option>
+        <option value="false">Não</option>
+      </select>
+    </div>
+    <div class="flex justify-end">
+      <button class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 transition text-white rounded-lg px-4 py-2 shadow text-sm font-medium">
+        <i data-lucide="save" class="w-4 h-4"></i>
+        Salvar Marca
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+document.getElementById('newBrandForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const form = e.currentTarget || e.target;
+  const submitBtn = form.querySelector('button[type="submit"], button');
+  FormUtils.clearFieldErrors(form);
+  FormUtils.setLoading(submitBtn, true);
+  const fd = new FormData(form);
+  const payload = { name: fd.get('name'), active: fd.get('active') === 'true' };
+  try {
+    await Http.fetchJson('/api/catalog/brands/', { method:'POST', body: JSON.stringify(payload) });
+    Http.toast('Marca criada com sucesso!','success');
+    if(form && typeof form.reset === 'function') form.reset();
+    setTimeout(()=> location.href = '/catalog/brands', 800);
+  } catch(err) {
+    if(err && err.data) FormUtils.showFieldErrors(form, err.data);
+    else Http.toast(err.message || 'Erro ao criar marca','error');
+  } finally { FormUtils.setLoading(submitBtn, false); }
+});
+</script>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>lucide.createIcons();</script>
+{% endblock %}

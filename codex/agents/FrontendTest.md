@@ -1,0 +1,13 @@
+﻿# FrontendTest.md
+- model: gpt-5
+- reasoning: high
+- approvals: auto
+- context:
+    - mcp: playwright
+    - mcp: context7
+- goals:
+    - criar e executar testes E2E com Playwright
+    - validar login, carrinho e checkout
+    - gerar relatórios visuais automáticos
+    - simular navegação real de usuário
+    - identificar regressões de UI

@@ -1,0 +1,8 @@
+<div id="toast" x-data="{ show:false, message:'', type:'info', timeout:null }" x-show="show"
+     x-transition
+     @show-toast.window="message=$event.detail.message; type=$event.detail.type||'info'; show=true; clearTimeout(timeout); timeout=setTimeout(()=>show=false, 3000)"
+     role="status" aria-live="polite"
+     class="fixed top-4 right-4 z-[9999] px-4 py-3 rounded shadow text-sm"
+     :class="{ 'bg-emerald-600 text-white': type==='success', 'bg-rose-600 text-white': type==='error', 'bg-slate-800 text-slate-100': type==='info' }">
+  <span x-text="message"></span>
+</div>

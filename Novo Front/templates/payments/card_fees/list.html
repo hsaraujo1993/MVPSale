@@ -1,0 +1,158 @@
+<!-- 🏷️ Cabeçalho -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Taxas de Cartão</h1>
+    <p class="text-slate-400 text-sm">Defina taxas por bandeira e parcelas.</p>
+  </div>
+  <a href="#" id="toggleNewFee" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">Nova Taxa</a>
+</div>
+
+<div class="mb-3">
+  <div class="flex gap-2 items-center bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 backdrop-blur-sm">
+    <label for="brandIdFee" class="sr-only">Filtrar por bandeira</label>
+    <input id="brandIdFee" placeholder="Filtrar por brand id (opcional)" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 min-w-[260px] text-sm" />
+    <button id="applyFee" class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">Aplicar</button>
+  </div>
+</div>
+
+<div id="newFeeWrap" class="hidden mb-4 bg-slate-800/50 border border-slate-700 rounded-2xl p-4">
+  <form id="newFeeForm" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+    <div class="md:col-span-2">
+      <label for="feeBrand" class="sr-only">Bandeira</label>
+      <label class="block text-sm mb-1">Bandeira</label>
+      <select id="feeBrand" name="brand" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"></select>
+    </div>
+    <div>
+      <label for="fee-type" class="sr-only">Tipo</label>
+      <label class="block text-sm mb-1">Tipo</label>
+      <select id="fee-type" name="type" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+        <option value="card_credit">Crédito</option>
+        <option value="card_debit">Débito</option>
+      </select>
+    </div>
+    <div>
+      <label for="installments_min" class="sr-only">Parcelas mínimas</label>
+      <label class="block text-sm mb-1">Parcelas mín.</label>
+      <input id="installments_min" name="installments_min" type="number" min="1" value="1" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label for="installments_max" class="sr-only">Parcelas máximas</label>
+      <label class="block text-sm mb-1">Parcelas máx.</label>
+      <input id="installments_max" name="installments_max" type="number" min="1" value="1" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label for="fee_percent" class="sr-only">Taxa porcentagem</label>
+      <label class="block text-sm mb-1">Taxa %</label>
+      <input id="fee_percent" name="fee_percent" type="number" step="0.001" min="0" value="0" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label for="settlement_days_fee" class="sr-only">D+ Liquidação</label>
+      <label class="block text-sm mb-1">D+ Liquidação</label>
+      <input id="settlement_days_fee" name="settlement_days" type="number" step="1" min="0" value="30" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div class="md:col-span-6">
+      <button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Salvar</button>
+    </div>
+  </form>
+  <hr class="my-3 border-slate-700" />
+</div>
+<div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+  <table class="min-w-full text-sm border-separate border-spacing-0"><thead class="bg-slate-800/70 text-slate-300 uppercase text-xs"><tr>
+    <th class="text-left px-3 py-2 font-medium">Bandeira</th>
+    <th class="text-left px-3 py-2 font-medium">Tipo</th>
+    <th class="text-left px-3 py-2 font-medium">Parcelas</th>
+    <th class="text-left px-3 py-2 font-medium">% Taxa</th>
+    <th class="text-left px-3 py-2 font-medium">Ações</th>
+  </tr></thead><tbody id="rowsFee" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition"></tbody></table>
+</div>
+<div class="mt-4 flex items-center gap-2 text-sm">
+  <button id="prevFee" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">← Anterior</button>
+  <span id="pageInfoFee" class="text-slate-400 min-w-[80px] text-center"></span>
+  <button id="nextFee" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Próxima →</button>
+</div>
+<script>
+  const scf = { page:1, brand:'', next:null, previous:null };
+  const rows = document.getElementById('rowsFee');
+  const brand = document.getElementById('brandIdFee');
+  const apply = document.getElementById('applyFee');
+  const toggleNewFee = document.getElementById('toggleNewFee');
+  const newFeeWrap = document.getElementById('newFeeWrap');
+  const feeBrand = document.getElementById('feeBrand');
+  toggleNewFee?.addEventListener('click', async (e)=>{ e.preventDefault(); newFeeWrap.classList.toggle('hidden'); if(!newFeeWrap.classList.contains('hidden')) { await loadBrands(); }});
+  async function loadBrands(){
+    try{ const data = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); const arr = data.results || data || []; feeBrand.innerHTML = arr.map(b=>`<option value="${b.id}">${b.name}</option>`).join(''); }catch(e){}
+  }
+  document.getElementById('newFeeForm')?.addEventListener('submit', async (e)=>{
+    e.preventDefault(); const form = e.currentTarget || e.target; const submitBtn = form.querySelector('button[type="submit"], button'); FormUtils.clearFieldErrors(form); FormUtils.setLoading(submitBtn, true); const fd=new FormData(form);
+    const payload={ brand: fd.get('brand'), type: fd.get('type'), installments_min: parseInt(fd.get('installments_min')||'1',10), installments_max: parseInt(fd.get('installments_max')||'1',10), fee_percent: parseFloat(fd.get('fee_percent')||'0'), settlement_days: parseInt(fd.get('settlement_days')||'30',10) };
+    try{ await Http.fetchJson('/api/payment/card-fees/', { method:'POST', body: JSON.stringify(payload)}); Http.toast('Taxa criada','success'); if(form && typeof form.reset === 'function') form.reset(); newFeeWrap.classList.add('hidden'); load(); }
+    catch(err){ if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message||'Erro ao criar taxa','error'); }
+    finally{ FormUtils.setLoading(submitBtn, false); }
+  });
+  const prev = document.getElementById('prevFee');
+  const next = document.getElementById('nextFee');
+  const pageInfo = document.getElementById('pageInfoFee');
+  apply.addEventListener('click', ()=>{ scf.page=1; scf.brand=brand.value; load(); });
+  prev.addEventListener('click', ()=>{ if(scf.previous){ scf.page--; load(); }});
+  next.addEventListener('click', ()=>{ if(scf.next){ scf.page++; load(); }});
+  async function load(){
+    const params = new URLSearchParams(); params.set('page', scf.page);
+    if(scf.brand) params.set('brand', scf.brand);
+    try{
+      const data = await Http.fetchJson(`/api/payment/card-fees/?${params}`);
+      rows.innerHTML=''; (data.results||[]).forEach(f=>{
+        const tr = document.createElement('tr'); tr.innerHTML = `
+          <td class="px-3 py-2">${f.brand||''}</td>
+          <td class="px-3 py-2">${f.type||''}</td>
+          <td class="px-3 py-2">${f.installments_min||''}-${f.installments_max||''}</td>
+          <td class="px-3 py-2">${f.fee_percent ?? ''}</td>
+          <td class="px-3 py-2"><button class="text-sky-400 hover:underline" data-view="${f.id}">Visualizar</button></td>`; rows.appendChild(tr);
+      });
+      rows.querySelectorAll('[data-view]').forEach(btn=> btn.addEventListener('click', ()=> viewFee(btn.dataset.view)));
+      scf.next=data.next; scf.previous=data.previous; pageInfo.textContent = `Página ${scf.page}`;
+    }catch(err){ Http.toast(err.message||'Erro ao carregar taxas','error'); }
+  } load();
+
+  const detailWrapFee = document.createElement('div'); detailWrapFee.className='mt-4'; rows.parentElement.parentElement.after(detailWrapFee);
+  async function viewFee(id){
+    try{
+      const f = await Http.fetchJson(`/api/payment/card-fees/${id}/`);
+      // Ensure brands select populated
+      try{ const bdata = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); const arr=bdata.results||bdata||[]; feeBrand.innerHTML = arr.map(b=>`<option value="${b.id}" ${String(b.id)===String(f.brand)?'selected':''}>${b.name}</option>`).join(''); }catch(e){}
+      detailWrapFee.innerHTML = `
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">Detalhe da Taxa</h3>
+            <div class="space-x-2">
+              <button id="editFee" class="px-3 py-1 rounded bg-slate-700">Editar</button>
+              <button id="delFee" class="px-3 py-1 rounded bg-rose-600 text-white">Deletar</button>
+              <button id="closeFee" class="px-3 py-1 rounded bg-slate-700">Voltar</button>
+            </div>
+          </div>
+          <div id="feeView" class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div class="text-sm">Bandeira: <span>${f.brand||''}</span></div>
+            <div class="text-sm">Tipo: <span>${f.type||''}</span></div>
+            <div class="text-sm">Parcelas: <span>${f.installments_min||''}-${f.installments_max||''}</span></div>
+            <div class="text-sm">Taxa %: <span>${f.fee_percent??''}</span></div>
+            <div class="text-sm">D+ Liquidação: <span>${f.settlement_days??''}</span></div>
+          </div>
+          <form id="feeEdit" class="hidden grid grid-cols-1 md:grid-cols-6 gap-3 mt-2">
+            <div class="md:col-span-2"><label class="block text-sm mb-1">Bandeira</label><select name="brand" id="feeBrandEdit" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"></select></div>
+            <div><label class="block text-sm mb-1">Tipo</label><select name="type" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"><option value="card_credit" ${f.type==='card_credit'?'selected':''}>Crédito</option><option value="card_debit" ${f.type==='card_debit'?'selected':''}>Débito</option></select></div>
+            <div><label class="block text-sm mb-1">Parcelas mín.</label><input name="installments_min" type="number" min="1" value="${f.installments_min||1}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Parcelas máx.</label><input name="installments_max" type="number" min="1" value="${f.installments_max||1}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Taxa %</label><input name="fee_percent" type="number" step="0.001" value="${f.fee_percent??0}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">D+ Liquidação</label><input name="settlement_days" type="number" step="1" value="${f.settlement_days??30}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div class="md:col-span-6"><button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Salvar</button></div>
+          </form>
+        </div>`;
+      // Populate brand select for edit
+      try{ const bdata2 = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); const arr2=bdata2.results||bdata2||[]; const sel = detailWrapFee.querySelector('#feeBrandEdit'); sel.innerHTML = arr2.map(b=>`<option value="${b.id}" ${String(b.id)===String(f.brand)?'selected':''}>${b.name}</option>`).join(''); }catch(e){}
+      detailWrapFee.scrollIntoView({behavior:'smooth'});
+      document.getElementById('closeFee').onclick = ()=> detailWrapFee.innerHTML='';
+      document.getElementById('editFee').onclick = ()=>{ document.getElementById('feeView').classList.add('hidden'); document.getElementById('feeEdit').classList.remove('hidden'); };
+      document.getElementById('delFee').onclick = ()=> UI.confirm(`Excluir taxa (${f.type||''} ${f.installments_min||''}-${f.installments_max||''})?`, async ()=>{ try{ await Http.fetchJson(`/api/payment/card-fees/${id}/`, { method:'DELETE' }); Http.toast('Excluída','success'); detailWrapFee.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } });
+      document.getElementById('feeEdit').onsubmit = async (e)=>{ e.preventDefault(); const fd=new FormData(e.currentTarget); const payload={ brand: fd.get('brand'), type: fd.get('type'), installments_min: parseInt(fd.get('installments_min')||'1',10), installments_max: parseInt(fd.get('installments_max')||'1',10), fee_percent: parseFloat(fd.get('fee_percent')||'0'), settlement_days: parseInt(fd.get('settlement_days')||'30',10) }; try{ await Http.fetchJson(`/api/payment/card-fees/${id}/`, { method:'PATCH', body: JSON.stringify(payload)}); Http.toast('Atualizada','success'); detailWrapFee.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao atualizar','error'); } };
+    }catch(err){ Http.toast(err.message||'Erro ao carregar detalhe','error'); }
+  }
+</script>

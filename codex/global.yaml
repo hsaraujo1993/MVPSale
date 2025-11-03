@@ -1,0 +1,14 @@
+
+context_files:
+  - sprint_flow.md
+agents_dir: codex/agents
+mcp:
+  servers:
+    - name: context7
+      command: npx -y @upstash/context7-mcp@latest
+    - name: playwright
+      command: npx -y mcp-playwright
+    - name: context7-remote
+      url: https://mcp.context7.com/mcp
+      bearer-token-env-var: CONTEXT7_TOKEN
+

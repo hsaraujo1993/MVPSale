@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Pessoas · MVPSale{% endblock %}
+{% block content %}
+{% if request.GET.tab == 'suppliers' %}
+  {% include "partials/breadcrumb.html" with b1="Cadastros" b2="Fornecedores" %}
+{% elif request.GET.tab == 'sellers' %}
+  {% include "partials/breadcrumb.html" with b1="Cadastros" b2="Vendedores" %}
+{% else %}
+  {% include "partials/breadcrumb.html" with b1="Cadastros" b2="Clientes" %}
+{% endif %}
+{% if request.GET.tab == 'customers' %}
+  {% include "people/customers/list.html" %}
+{% elif request.GET.tab == 'suppliers' %}
+  {% include "people/suppliers/list.html" %}
+{% elif request.GET.tab == 'sellers' %}
+  {% include "people/sellers/list.html" %}
+{% else %}
+  {% include "people/customers/list.html" %}
+{% endif %}
+{% endblock %}

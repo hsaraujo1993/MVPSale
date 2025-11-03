@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Abrir Caixa · MVPSale{% endblock %}
+
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Caixa" u1="/cashier" b2="Abertura" %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Abrir / Fechar Caixa</h1>
+    <p class="text-slate-400 text-sm">Gerencie a abertura e o fechamento do caixa diário.</p>
+  </div>
+  <a href="/cashier/history" class="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-2 transition">
+    <i data-lucide="history" class="w-4 h-4"></i>
+    Histórico
+  </a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- 🟢 Abertura de Caixa -->
+  <div class="bg-slate-800/40 border border-slate-700 rounded-2xl shadow p-6 backdrop-blur-md">
+    <h2 class="text-lg font-medium mb-3 text-slate-100">Abrir Caixa</h2>
+    <form id="openForm" class="space-y-3">
+      <div>
+        <label for="opening_amount" class="sr-only">Valor Inicial</label>
+        <label class="block text-sm mb-1 text-slate-300">Valor Inicial</label>
+        <input id="opening_amount" name="opening_amount" type="number" step="0.01" min="0"
+               class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+               placeholder="Ex: 500.00" required>
+      </div>
+      <div>
+        <label for="open_note" class="sr-only">Observação (opcional)</label>
+        <label class="block text-sm mb-1 text-slate-300">Observação (opcional)</label>
+        <textarea id="open_note" name="note" rows="2"
+                  class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+                  placeholder="Ex: Troco inicial do dia..."></textarea>
+      </div>
+      <div class="flex justify-end">
+        <button class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 transition text-white rounded-lg px-4 py-2 font-medium shadow">
+          <i data-lucide="lock-open" class="w-4 h-4"></i>
+          Abrir Caixa
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 🔴 Fechamento de Caixa -->
+  <div class="bg-slate-800/40 border border-slate-700 rounded-2xl shadow p-6 backdrop-blur-md">
+    <h2 class="text-lg font-medium mb-3 text-slate-100">Fechar Caixa</h2>
+    <form id="closeForm" class="space-y-3">
+      <div>
+        <label for="closing_amount" class="sr-only">Valor Final</label>
+        <label class="block text-sm mb-1 text-slate-300">Valor Final</label>
+        <input id="closing_amount" name="closing_amount" type="number" step="0.01" min="0"
+               class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-rose-500 outline-none"
+               placeholder="Ex: 1800.00" required>
+      </div>
+      <div>
+        <label for="close_note" class="sr-only">Observação (opcional)</label>
+        <label class="block text-sm mb-1 text-slate-300">Observação (opcional)</label>
+        <textarea id="close_note" name="note" rows="2"
+                  class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-rose-500 outline-none"
+                  placeholder="Ex: Encerramento do turno..."></textarea>
+      </div>
+      <div class="flex justify-end">
+        <button class="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-500 transition text-white rounded-lg px-4 py-2 font-medium shadow">
+          <i data-lucide="lock" class="w-4 h-4"></i>
+          Fechar Caixa
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 📜 Sessão atual -->
+<div id="cashierStatus" class="mt-8 p-5 bg-slate-800/50 border border-slate-700 rounded-xl text-sm text-slate-300 hidden">
+  <h3 class="text-lg font-medium mb-2">Status Atual</h3>
+  <p><strong>Aberto por:</strong> <span id="userName">—</span></p>
+  <p><strong>Iniciado em:</strong> <span id="openedAt">—</span></p>
+  <p><strong>Valor Inicial:</strong> R$ <span id="amountStart">0,00</span></p>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // Verifica se há caixa aberto
+  try {
+    const data = await Http.fetchJson('/api/cashier/session/active/');
+    if (data && data.is_open) {
+      document.getElementById('cashierStatus').classList.remove('hidden');
+      document.getElementById('userName').textContent = data.user_name;
+      document.getElementById('openedAt').textContent = new Date(data.opened_at).toLocaleString('pt-BR');
+      document.getElementById('amountStart').textContent = parseFloat(data.opening_amount).toFixed(2);
+    }
+  } catch(e) {}
+
+  // Abrir caixa
+  document.getElementById('openForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const form = e.currentTarget || e.target;
+    const submitBtn = form.querySelector('button[type="submit"], button');
+    FormUtils.clearFieldErrors(form);
+    FormUtils.setLoading(submitBtn, true);
+    const fd = new FormData(form);
+    const payload = { opening_amount: fd.get('opening_amount'), note: fd.get('note') || '' };
+    try {
+      await Http.fetchJson('/api/cashier/sessions/', { method: 'POST', body: JSON.stringify(payload) });
+      Http.toast('Caixa aberto com sucesso!','success');
+      if(form && typeof form.reset === 'function') form.reset();
+      location.reload();
+    } catch(err){ if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message || 'Erro ao abrir caixa','error'); }
+    finally { FormUtils.setLoading(submitBtn, false); }
+  });
+
+  // Fechar caixa
+  document.getElementById('closeForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const form = e.currentTarget || e.target;
+    const submitBtn = form.querySelector('button[type="submit"], button');
+    FormUtils.clearFieldErrors(form);
+    FormUtils.setLoading(submitBtn, true);
+    const fd = new FormData(form);
+    const payload = { closing_amount: fd.get('closing_amount'), note: fd.get('note') || '' };
+    try {
+      await Http.fetchJson('/api/cashier/close/', { method: 'POST', body: JSON.stringify(payload) });
+      Http.toast('Caixa fechado com sucesso!','success');
+      if(form && typeof form.reset === 'function') form.reset();
+      location.reload();
+    } catch(err){ if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message || 'Erro ao fechar caixa','error'); }
+    finally { FormUtils.setLoading(submitBtn, false); }
+  });
+});
+</script>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>lucide.createIcons();</script>
+{% endblock %}

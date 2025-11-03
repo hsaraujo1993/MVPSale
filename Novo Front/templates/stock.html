@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Estoque · MVPSale{% endblock %}
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Catálogo" u1="/catalog" b2="Estoque" %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Estoque</h1>
+    <p class="text-slate-400 text-sm">Visualize e gerencie os níveis de estoque dos produtos.</p>
+  </div>
+</div>
+
+<div class="mb-3">
+  <div class="flex flex-wrap items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 mb-4 backdrop-blur-sm">
+    <label for="ordering" class="sr-only">Ordenação</label>
+    <select id="ordering" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm">
+      <option value="-updated_at">Atualizados recentemente</option>
+      <option value="quantity_current">Quantidade</option>
+    </select>
+    <button id="applyFilters" class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">Aplicar</button>
+  </div>
+</div>
+
+<div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+  <table class="min-w-full text-sm border-separate border-spacing-0">
+    <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs">
+      <tr>
+        <th class="text-left px-3 py-2 font-medium">Produto</th>
+        <th class="text-left px-3 py-2 font-medium">Qtd Atual</th>
+        <th class="text-left px-3 py-2 font-medium">Mínimo</th>
+        <th class="text-left px-3 py-2 font-medium">Máximo</th>
+        <th class="text-left px-3 py-2 font-medium">Status</th>
+        <th class="text-left px-3 py-2 font-medium">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="rows" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition-colors duration-150"></tbody>
+  </table>
+</div>
+
+<div class="mt-4 flex items-center gap-2 text-sm">
+  <button id="prev" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">← Anterior</button>
+  <span id="pageInfo" class="text-slate-400 min-w-[80px] text-center"></span>
+  <button id="next" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Próxima →</button>
+</div>
+
+<script>
+  const stateS = { page: 1, ordering: '-updated_at', next:null, previous:null };
+  const rowsS = document.getElementById('rows');
+  const orderingS = document.getElementById('ordering');
+  const applyS = document.getElementById('applyFilters');
+  const prevS = document.getElementById('prev');
+  const nextS = document.getElementById('next');
+  const pageInfoS = document.getElementById('pageInfo');
+  applyS.addEventListener('click', ()=>{ stateS.page=1; stateS.ordering=orderingS.value; loadS(); });
+  prevS.addEventListener('click', ()=>{ if(stateS.previous){ stateS.page--; loadS(); }});
+  nextS.addEventListener('click', ()=>{ if(stateS.next){ stateS.page++; loadS(); }});
+  async function loadS(){
+    const params = new URLSearchParams();
+    params.set('page', stateS.page);
+    if (stateS.ordering) params.set('ordering', stateS.ordering);
+    try {
+      const data = await Http.fetchJson(`/api/stock/?${params}`);
+      rowsS.innerHTML = '';
+      const results = data.results || [];
+      const nameCache = new Map();
+      async function getName(id){
+        if(!id) return '';
+        if(nameCache.has(id)) return nameCache.get(id);
+        try{
+          const p = await Http.fetchJson(`/api/catalog/products/${id}/`);
+          const n = p && p.name ? p.name : String(id);
+          nameCache.set(id, n); return n;
+        }catch(e){ nameCache.set(id, String(id)); return String(id); }
+      }
+      for (const s of results){
+        const tr = document.createElement('tr');
+        const prodName = await getName(s.product);
+        tr.innerHTML = `
+          <td class="px-3 py-2">${prodName}</td>
+          <td class="px-3 py-2">${s.quantity_current}</td>
+          <td class="px-3 py-2">${s.minimum ?? '-'}</td>
+          <td class="px-3 py-2">${s.maximum ?? '-'}</td>
+          <td class="px-3 py-2">${s.status||'-'}</td>
+          <td class="px-3 py-2"><button class="text-sky-400 hover:underline" data-view="${s.uuid}">Visualizar</button></td>`;
+        rowsS.appendChild(tr);
+      }
+      rowsS.querySelectorAll('[data-view]').forEach(btn=> btn.addEventListener('click', ()=> viewStock(btn.dataset.view)));
+      stateS.next = data.next; stateS.previous = data.previous;
+      pageInfoS.textContent = `Página ${stateS.page}`;
+    } catch(err){ Http.toast(err.message||'Erro ao carregar estoque', 'error'); }
+  }
+  // Painel de detalhe de estoque
+  const detailWrapS = document.createElement('div');
+  detailWrapS.className = 'mt-4';
+  document.querySelector('.overflow-x-auto')?.after(detailWrapS);
+  async function viewStock(uuid){
+    try{
+      const s = await Http.fetchJson(`/api/stock/${uuid}/`);
+      let prodName = String(s.product);
+      try { const p = await Http.fetchJson(`/api/catalog/products/${s.product}/`); prodName = p?.name || prodName; } catch(e){}
+      detailWrapS.innerHTML = `
+        <div class=\"bg-slate-800/50 border border-slate-700 rounded-xl p-4\">
+          <div class=\"flex items-center justify-between mb-3\">
+            <h3 class=\"font-medium\">Detalhe do Estoque</h3>
+            <div class=\"space-x-2\">
+              <button id=\"editS\" class=\"px-3 py-1 rounded bg-slate-700\">Editar</button>
+              <button id=\"delS\" class=\"px-3 py-1 rounded bg-rose-600 text-white\">Deletar</button>
+              <button id=\"closeS\" class=\"px-3 py-1 rounded bg-slate-700\">Voltar</button>
+            </div>
+          </div>
+          <div id=\"sView\" class=\"grid grid-cols-1 md:grid-cols-3 gap-2\">
+            <div class=\"text-sm\">Produto: <span>${prodName}</span></div>
+            <div class=\"text-sm\">Qtd Atual: <span>${s.quantity_current}</span></div>
+            <div class=\"text-sm\">Mínimo: <span>${s.minimum ?? '-'} </span></div>
+            <div class=\"text-sm\">Máximo: <span>${s.maximum ?? '-'} </span></div>
+            <div class=\"text-sm\">Status: <span>${s.status||'-'}</span></div>
+          </div>
+          <form id=\"sEdit\" class=\"hidden grid grid-cols-1 md:grid-cols-3 gap-3 mt-2\">
+            <div><label class=\"block text-sm mb-1\">Mínimo</label><input name=\"minimum\" type=\"number\" step=\"1\" value=\"${s.minimum ?? ''}\" class=\"w-full px-3 py-2 rounded bg-slate-900 border border-slate-700\"/></div>
+            <div><label class=\"block text-sm mb-1\">Máximo</label><input name=\"maximum\" type=\"number\" step=\"1\" value=\"${s.maximum ?? ''}\" class=\"w-full px-3 py-2 rounded bg-slate-900 border border-slate-700\"/></div>
+            <div class=\"md:col-span-3\"><button class=\"bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2\">Salvar</button></div>
+          </form>
+        </div>`;
+      detailWrapS.scrollIntoView({behavior:'smooth'});
+      document.getElementById('closeS').onclick = ()=> detailWrapS.innerHTML='';
+      document.getElementById('editS').onclick = ()=>{ document.getElementById('sView').classList.add('hidden'); document.getElementById('sEdit').classList.remove('hidden'); };
+      document.getElementById('delS').onclick = ()=> UI.confirm('Excluir registro de estoque?', async ()=>{ try{ await Http.fetchJson(`/api/stock/${uuid}/`, { method:'DELETE' }); Http.toast('Excluído','success'); detailWrapS.innerHTML=''; loadS(); }catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } }, 'Excluir', 'danger');
+      document.getElementById('sEdit').onsubmit = async (e)=>{ e.preventDefault(); const fd=new FormData(e.currentTarget); const payload={}; if(fd.get('minimum')!=='') payload.minimum = parseInt(fd.get('minimum'),10); if(fd.get('maximum')!=='') payload.maximum = parseInt(fd.get('maximum'),10); try{ await Http.fetchJson(`/api/stock/${uuid}/`, { method:'PATCH', body: JSON.stringify(payload)}); Http.toast('Atualizado','success'); viewStock(uuid); }catch(err){ Http.toast(err.message||'Erro ao atualizar','error'); } };
+    }catch(err){ Http.toast(err.message||'Erro ao carregar detalhe','error'); }
+  }
+  loadS();
+</script>
+{% endblock %}

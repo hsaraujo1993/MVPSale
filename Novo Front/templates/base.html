@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-br" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}MVPSale{% endblock %}</title>
+    <script>
+      (function(){
+        try {
+          var p = location.pathname;
+          if (p && p.indexOf('/catalogtab=') > -1) {
+            var tab = p.split('catalogtab=')[1] || '';
+            if (tab) location.replace('/catalog?tab=' + encodeURIComponent(tab));
+          }
+        } catch(e){}
+      })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: { extend: {} },
+      };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="/static/js/csrf.js?v=20251030"></script>
+    <script src="/static/js/http.js?v=20251030"></script>
+    <script src="/static/js/form-utils.js?v=20251030"></script>
+    <script src="/static/js/ui.js?v=20251030" defer></script>
+  </head>
+  <body class="bg-slate-900 text-slate-100 min-h-screen" x-data="{ sidebarVisible:false }">
+    {% include "partials/alerts.html" %}
+
+    <div class="flex min-h-screen">
+      {% if request.path != '/login' and request.path != '/login/' %}
+        {% include "partials/sidebar.html" %}
+      {% endif %}
+      <div class="flex-1 flex flex-col">
+        {% if request.path != '/login' and request.path != '/login/' %}
+        <header class="sticky top-0 z-20 backdrop-blur bg-slate-900/70 border-b border-slate-800">
+          <div class="px-4 md:px-6 py-3 flex items-center justify-between" x-data="{ open:false }">
+            <div class="flex items-center gap-2">
+              <button class="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/60 transition"
+                      aria-label="Abrir menu"
+                      @click="sidebarVisible = true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-5 w-5 text-slate-200" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+              </button>
+            </div>
+            <div class="relative">
+              <button @click="open=!open" class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-slate-800">
+                <span class="text-sm text-slate-300">Olá, {{ user.first_name|default:user.username }}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div x-show="open" @click.outside="open=false" x-transition class="absolute right-0 mt-2 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow">
+                <a href="/settings" class="block px-3 py-2 text-sm text-slate-200 hover:bg-slate-700">Perfil</a>
+                <a href="/logout/" class="block px-3 py-2 text-sm text-rose-300 hover:bg-slate-700">Sair</a>
+              </div>
+            </div>
+          </div>
+        </header>
+        {% endif %}
+        <main class="p-6">
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+    {% include "partials/confirm_modal.html" %}
+  </body>
+  </html>

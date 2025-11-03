@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc versao="4.00">
+  <NFe>
+    <infNFe>
+      <ide>
+        <cUF>35</cUF>
+        <natOp>VENDA</natOp>
+      </ide>
+      <emit>
+        <CNPJ>00000000000191</CNPJ>
+        <xNome>Fornecedor Exemplo LTDA</xNome>
+      </emit>
+      <dest>
+        <CNPJ>00000000000272</CNPJ>
+        <xNome>Minha Empresa</xNome>
+      </dest>
+      <det nItem="1">
+        <prod>
+          <cProd>ABC123</cProd>
+          <xProd>Produto Exemplo</xProd>
+          <NCM>22021000</NCM>
+          <CFOP>5102</CFOP>
+          <uCom>UN</uCom>
+          <qCom>1.0000</qCom>
+          <vUnCom>10.00</vUnCom>
+          <vProd>10.00</vProd>
+          <cEAN>7890000000000</cEAN>
+        </prod>
+      </det>
+    </infNFe>
+  </NFe>
+</nfeProc>
+

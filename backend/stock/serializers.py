@@ -1,0 +1,62 @@
+from rest_framework import serializers
+from catalog.models import Product
+from .models import Stock, StockMovement
+from django.conf import settings
+from decimal import Decimal
+
+
+class StockSerializer(serializers.ModelSerializer):
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+
+    class Meta:
+        model = Stock
+        fields = [
+            "uuid",
+            "product",
+            "quantity_current",
+            "minimum",
+            "maximum",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["uuid", "quantity_current", "status", "created_at", "updated_at"]
+
+
+class StockMovementSerializer(serializers.ModelSerializer):
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+
+    class Meta:
+        model = StockMovement
+        fields = [
+            "uuid",
+            "product",
+            "type",
+            "quantity",
+            "reference",
+            "note",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["uuid", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        product = attrs.get("product")
+        mtype = attrs.get("type")
+        qty = attrs.get("quantity")
+        if product is None or mtype is None or qty is None:
+            return attrs
+        try:
+            current = Stock.objects.get(product=product).quantity_current
+        except Stock.DoesNotExist:
+            current = Decimal("0")
+        if mtype == "ENTRADA":
+            new_qty = current + qty
+        elif mtype == "SAIDA":
+            new_qty = current - qty
+        else:  # AJUSTE (signed)
+            new_qty = current + qty
+
+        if getattr(settings, "PREVENT_NEGATIVE_STOCK", True) and new_qty < 0:
+            raise serializers.ValidationError({"quantity": "Operação resultaria em estoque negativo."})
+        return attrs

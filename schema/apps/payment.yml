@@ -1,0 +1,392 @@
+openapi: 3.0.3
+info:
+  title: MVPSale API - Payment endpoints
+  version: 1.0.0
+  description: Payment-related endpoints extracted from the full schema
+paths:
+  /api/payment/logs/:
+    get:
+      operationId: api_payment_logs_retrieve
+      summary: Últimos logs de pagamento
+      tags:
+      - payment
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/payment/methods/:
+    get:
+      operationId: api_payment_methods_list
+      summary: Listar métodos de pagamento
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - payment
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/PaginatedPaymentMethodList'
+          description: ''
+    post:
+      operationId: api_payment_methods_create
+      summary: Criar método
+      tags:
+      - payment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PaymentMethod'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PaymentMethod'
+          multipart/form-data:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PaymentMethod'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/PaymentMethod'
+          description: ''
+  /api/payment/methods/{id}/:
+    get:
+      operationId: api_payment_methods_retrieve
+      summary: Detalhar método
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este payment method.
+        required: true
+      tags:
+      - payment
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/PaymentMethod'
+          description: ''
+    put:
+      operationId: api_payment_methods_update
+      summary: Atualizar método
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este payment method.
+        required: true
+      tags:
+      - payment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PaymentMethod'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PaymentMethod'
+          multipart/form-data:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PaymentMethod'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/PaymentMethod'
+          description: ''
+    patch:
+      operationId: api_payment_methods_partial_update
+      summary: Atualização parcial de método
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este payment method.
+        required: true
+      tags:
+      - payment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PatchedPaymentMethod'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PatchedPaymentMethod'
+          multipart/form-data:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PatchedPaymentMethod'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/PaymentMethod'
+          description: ''
+    delete:
+      operationId: api_payment_methods_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este payment method.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/payment/receivables/:
+    get:
+      operationId: api_payment_receivables_list
+      summary: Listar recebíveis
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - payment
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/PaginatedReceivableList'
+          description: ''
+    post:
+      operationId: api_payment_receivables_create
+      summary: Criar recebível
+      tags:
+      - payment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/Receivable'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/Receivable'
+          multipart/form-data:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/Receivable'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/Receivable'
+          description: ''
+  /api/payment/receivables/{id}/:
+    get:
+      operationId: api_payment_receivables_retrieve
+      summary: Detalhar recebível
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este receivable.
+        required: true
+      tags:
+      - payment
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/Receivable'
+          description: ''
+    put:
+      operationId: api_payment_receivables_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este receivable.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/Receivable'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/Receivable'
+          multipart/form-data:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/Receivable'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/Receivable'
+          description: ''
+    patch:
+      operationId: api_payment_receivables_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este receivable.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PatchedReceivable'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PatchedReceivable'
+          multipart/form-data:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/PatchedReceivable'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/Receivable'
+          description: ''
+    delete:
+      operationId: api_payment_receivables_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este receivable.
+        required: true
+      tags:
+      - payment
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/payment/receivables/{id}/settle/:
+    post:
+      operationId: api_payment_receivables_settle_create
+      summary: Baixar/ Liquidar recebível
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este receivable.
+        required: true
+      tags:
+      - payment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/Settle'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/Settle'
+          multipart/form-data:
+            schema:
+              $ref: '../../schema.yml#/components/schemas/Settle'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/Receivable'
+          description: ''
+  /api/payment/receivables/summary/:
+    get:
+      operationId: api_payment_receivables_summary_retrieve
+      summary: Resumo de recebíveis
+      tags:
+      - payment
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema.yml#/components/schemas/Receivable'
+          description: ''
+
+components: {}

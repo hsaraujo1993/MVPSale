@@ -1,0 +1,191 @@
+<!-- 🏷️ Cabeçalho -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Fornecedores</h1>
+    <p class="text-slate-400 text-sm">Gerencie os fornecedores e notas relacionadas.</p>
+  </div>
+  <a href="#" id="toggleNewSup" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">Novo Fornecedor</a>
+</div>
+
+<div id="newSupWrap" class="hidden mb-4 bg-slate-800/50 border border-slate-700 rounded-2xl p-4">
+  <form id="newSupForm" class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+    <div>
+      <label for="sup-corporate" class="sr-only">Razão Social</label>
+      <label class="block text-sm mb-1">Razão Social</label>
+      <input id="sup-corporate" name="corporate_name" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" required />
+    </div>
+    <div>
+      <label for="sup-cnpj" class="sr-only">CNPJ</label>
+      <label class="block text-sm mb-1">CNPJ</label>
+      <input id="sup-cnpj" name="cnpj" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label for="sup-email" class="sr-only">Email</label>
+      <label for="sup-email" id="lbl-sup-email" class="block text-sm mb-1">Email</label>
+      <input id="sup-email" name="email" type="email" aria-labelledby="lbl-sup-email" aria-label="Email do fornecedor" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label for="sup-phone" class="sr-only">Telefone</label>
+      <label for="sup-phone" id="lbl-sup-phone" class="block text-sm mb-1">Telefone</label>
+      <input id="sup-phone" name="phone" aria-labelledby="lbl-sup-phone" aria-label="Telefone do fornecedor" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label for="sup-address" class="sr-only">Endereço</label>
+      <label class="block text-sm mb-1">Endereço</label>
+      <input id="sup-address" name="address" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label for="sup-cep" class="sr-only">CEP</label>
+      <label class="block text-sm mb-1">CEP</label>
+      <input id="sup-cep" name="cep" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label for="sup-city" class="sr-only">Cidade</label>
+      <label class="block text-sm mb-1">Cidade</label>
+      <input id="sup-city" name="city" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label for="sup-uf" class="sr-only">UF</label>
+      <label class="block text-sm mb-1">UF</label>
+      <input id="sup-uf" name="uf" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Salvar</button>
+    </div>
+  </form>
+  <hr class="my-3 border-slate-700" />
+</div>
+
+<div class="mb-3 flex items-center justify-between">
+  <div class="flex gap-2 items-center bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 backdrop-blur-sm">
+    <label for="qSup" class="sr-only">Buscar fornecedores</label>
+    <input id="qSup" aria-label="Buscar fornecedores" placeholder="Buscar por nome/email/telefone" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 min-w-[260px] text-sm" />
+    <label for="orderingSup" class="sr-only">Ordenação</label>
+    <select id="orderingSup" aria-label="Ordenação" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm">
+      <option value="corporate_name">Razão Social</option>
+      <option value="-created_at">Mais recentes</option>
+    </select>
+    <button id="applySup" class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">Aplicar</button>
+  </div>
+</div>
+
+<div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+  <table class="min-w-full text-sm border-separate border-spacing-0">
+    <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs"><tr>
+      <th class="text-left px-3 py-2 font-medium">Razão Social</th>
+      <th class="text-left px-3 py-2 font-medium">CNPJ</th>
+      <th class="text-left px-3 py-2 font-medium">Email</th>
+      <th class="text-left px-3 py-2 font-medium">Telefone</th>
+      <th class="text-left px-3 py-2 font-medium">Ações</th>
+    </tr></thead>
+    <tbody id="rowsSup" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition"></tbody>
+  </table>
+</div>
+
+<div class="mt-4 flex items-center gap-2 text-sm">
+  <button id="prevSup" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">← Anterior</button>
+  <span id="pageInfoSup" class="text-slate-400 min-w-[80px] text-center"></span>
+  <button id="nextSup" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Próxima →</button>
+</div>
+
+<script>
+  const ss = { page:1, q:'', ordering:'corporate_name', next:null, previous:null };
+  const rows = document.getElementById('rowsSup');
+  const q = document.getElementById('qSup');
+  const ordering = document.getElementById('orderingSup');
+  const apply = document.getElementById('applySup');
+  const prev = document.getElementById('prevSup');
+  const next = document.getElementById('nextSup');
+  const pageInfo = document.getElementById('pageInfoSup');
+  const toggleNewSup = document.getElementById('toggleNewSup');
+  const newSupWrap = document.getElementById('newSupWrap');
+  toggleNewSup.addEventListener('click', (e)=>{ e.preventDefault(); newSupWrap.classList.toggle('hidden'); });
+  document.getElementById('newSupForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const form = e.currentTarget || e.target;
+    const submitBtn = form.querySelector('button[type="submit"], button');
+    FormUtils.clearFieldErrors(form);
+    FormUtils.setLoading(submitBtn, true);
+    const fd=new FormData(form);
+    const payload={ corporate_name:fd.get('corporate_name'), cnpj:fd.get('cnpj'), email:fd.get('email'), phone:fd.get('phone'), address:fd.get('address'), cep:fd.get('cep'), city:fd.get('city'), uf:fd.get('uf') };
+    try{ await Http.fetchJson('/api/people/suppliers/', { method:'POST', body: JSON.stringify(payload)}); Http.toast('Fornecedor criado','success'); if(form && typeof form.reset === 'function') form.reset(); newSupWrap.classList.add('hidden'); load(); }
+    catch(err){ if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message||'Erro ao criar fornecedor','error'); }
+    finally{ FormUtils.setLoading(submitBtn, false); }
+  });
+  apply.addEventListener('click', ()=>{ ss.page=1; ss.q=q.value; ss.ordering=ordering.value; load(); });
+  prev.addEventListener('click', ()=>{ if(ss.previous){ ss.page--; load(); }});
+  next.addEventListener('click', ()=>{ if(ss.next){ ss.page++; load(); }});
+
+  async function load(){
+    const params = new URLSearchParams(); params.set('page', ss.page);
+    if(ss.q) params.set('search', ss.q); if(ss.ordering) params.set('ordering', ss.ordering);
+    try{
+      const data = await Http.fetchJson(`/api/people/suppliers/?${params}`);
+      rows.innerHTML=''; (data.results||[]).forEach(s=>{
+        const tr = document.createElement('tr'); tr.innerHTML = `
+          <td class="px-3 py-2">${s.corporate_name}</td>
+          <td class="px-3 py-2">${s.cnpj||''}</td>
+          <td class="px-3 py-2">${s.email||''}</td>
+          <td class="px-3 py-2">${s.phone||''}</td>
+          <td class="px-3 py-2"><button class="text-sky-400 hover:underline" data-view="${s.uuid}">Visualizar</button></td>`; rows.appendChild(tr);
+      }); rows.querySelectorAll('[data-view]').forEach(btn=> btn.addEventListener('click', ()=> viewSup(btn.dataset.view)));
+      ss.next=data.next; ss.previous=data.previous; pageInfo.textContent = `Página ${ss.page}`;
+    }catch(err){ Http.toast(err.message||'Erro ao carregar fornecedores','error'); }
+  } load();
+
+  const detailWrap = document.createElement('div'); detailWrap.className='mt-4'; rows.parentElement.parentElement.after(detailWrap);
+  async function viewSup(uuid){
+    try{
+      const s = await Http.fetchJson(`/api/people/suppliers/${uuid}/`);
+      detailWrap.innerHTML = `
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">Detalhe do Fornecedor</h3>
+            <div class="space-x-2">
+              <button id="editSup" class="px-3 py-1 rounded bg-slate-700">Editar</button>
+              <button id="delSup" class="px-3 py-1 rounded bg-rose-600 text-white">Deletar</button>
+              <button id="closeSup" class="px-3 py-1 rounded bg-slate-700">Voltar</button>
+            </div>
+          </div>
+          <div id="supView" class="space-y-1">
+            <div class="text-sm">Razão Social: <span>${s.corporate_name}</span></div>
+            <div class="text-sm">CNPJ: <span>${s.cnpj||''}</span></div>
+            <div class="text-sm">Email: <span>${s.email||''}</span></div>
+            <div class="text-sm">Telefone: <span>${s.phone||''}</span></div>
+          </div>
+          <form id="supEdit" class="hidden grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+            <div><label class="block text-sm mb-1">Razão Social</label><input name="corporate_name" value="${s.corporate_name}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Email</label><input name="email" value="${s.email||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Telefone</label><input name="phone" value="${s.phone||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Endereço</label><input name="address" value="${s.address||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">CEP</label><input name="cep" value="${s.cep||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Cidade</label><input name="city" value="${s.city||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">UF</label><input name="uf" value="${s.uf||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div class="md:col-span-3"><button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Salvar</button></div>
+          </form>
+        </div>`;
+      detailWrap.scrollIntoView({behavior:'smooth'});
+      document.getElementById('closeSup').onclick = ()=> detailWrap.innerHTML='';
+      document.getElementById('editSup').onclick = ()=>{ document.getElementById('supView').classList.add('hidden'); document.getElementById('supEdit').classList.remove('hidden'); };
+      document.getElementById('delSup').onclick = ()=> UI.confirm(`Excluir fornecedor "${s.corporate_name}"?`, async ()=>{ try{ await Http.fetchJson(`/api/people/suppliers/${uuid}/`, { method:'DELETE' }); Http.toast('Excluído','success'); detailWrap.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } }, 'Excluir', 'danger');
+      document.getElementById('supEdit').onsubmit = async (e)=>{
+        e.preventDefault();
+        const form = e.currentTarget || e.target;
+        const submitBtn = form.querySelector('button[type="submit"], button');
+        FormUtils.clearFieldErrors(form);
+        FormUtils.setLoading(submitBtn, true);
+        const fd=new FormData(form);
+        const payload={ corporate_name:fd.get('corporate_name'), email:fd.get('email'), phone:fd.get('phone'), address:fd.get('address'), cep:fd.get('cep'), city:fd.get('city'), uf:fd.get('uf') };
+        try{
+          await Http.fetchJson(`/api/people/suppliers/${uuid}/`, { method:'PATCH', body: JSON.stringify(payload)});
+          Http.toast('Atualizado','success');
+          detailWrap.innerHTML='';
+          load();
+        }catch(err){
+          if(err && err.data) FormUtils.showFieldErrors(form, err.data);
+          else Http.toast(err.message||'Erro ao atualizar','error');
+        } finally { FormUtils.setLoading(submitBtn, false); }
+      };
+    }catch(err){ Http.toast(err.message||'Erro ao carregar detalhe','error'); }
+  }
+</script>

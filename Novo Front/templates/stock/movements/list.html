@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Movimentos de Estoque · MVPSale{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Movimentos de Estoque</h1>
+<div class="mb-3 flex gap-2">
+  <select id="typeMv" class="px-3 py-2 rounded bg-slate-900 border border-slate-700">
+    <option value="">Todos</option>
+    <option value="INFLOW">Entrada</option>
+    <option value="OUTFLOW">Saída</option>
+  </select>
+  <button id="applyMv" class="px-3 py-2 rounded bg-slate-800 border border-slate-700">Aplicar</button>
+</div>
+<div class="overflow-x-auto border border-slate-700 rounded-lg">
+  <table class="min-w-full text-sm"><thead class="bg-slate-800/60"><tr>
+    <th class="text-left px-3 py-2">Produto</th>
+    <th class="text-left px-3 py-2">Tipo</th>
+    <th class="text-left px-3 py-2">Quantidade</th>
+    <th class="text-left px-3 py-2">Criado em</th>
+  </tr></thead><tbody id="rowsMv"></tbody></table>
+</div>
+<div class="mt-3 flex items-center gap-2 text-sm">
+  <button id="prevMv" class="px-3 py-1 rounded bg-slate-800 border border-slate-700">Anterior</button>
+  <span id="pageInfoMv" class="text-slate-400"></span>
+  <button id="nextMv" class="px-3 py-1 rounded bg-slate-800 border border-slate-700">Próxima</button>
+</div>
+<script>
+  const smv = { page:1, type:'', next:null, previous:null };
+  const rows = document.getElementById('rowsMv');
+  const typeSel = document.getElementById('typeMv');
+  const apply = document.getElementById('applyMv');
+  const prev = document.getElementById('prevMv');
+  const next = document.getElementById('nextMv');
+  const pageInfo = document.getElementById('pageInfoMv');
+  apply.addEventListener('click', ()=>{ smv.page=1; smv.type=typeSel.value; load(); });
+  prev.addEventListener('click', ()=>{ if(smv.previous){ smv.page--; load(); }});
+  next.addEventListener('click', ()=>{ if(smv.next){ smv.page++; load(); }});
+  async function load(){
+    const params = new URLSearchParams(); params.set('page', smv.page);
+    if(smv.type) params.set('type', smv.type);
+    try{
+      const data = await Http.fetchJson(`/api/stock/movements/?${params}`);
+      rows.innerHTML='';
+      const results = data.results||[];
+      const nameCache = new Map();
+      async function getName(id){
+        if(!id) return '';
+        if(nameCache.has(id)) return nameCache.get(id);
+        try{ const p = await Http.fetchJson(`/api/catalog/products/${id}/`); const n = p?.name || String(id); nameCache.set(id,n); return n; }catch(e){ nameCache.set(id,String(id)); return String(id);} }
+      for (const m of results){
+        const tr = document.createElement('tr');
+        const prodName = await getName(m.product);
+        tr.innerHTML = `
+          <td class="px-3 py-2">${prodName}</td>
+          <td class="px-3 py-2">${m.type}</td>
+          <td class="px-3 py-2">${m.quantity}</td>
+          <td class="px-3 py-2">${m.created_at}</td>`;
+        rows.appendChild(tr);
+      }
+      smv.next=data.next; smv.previous=data.previous; pageInfo.textContent = `Página ${smv.page}`;
+    }catch(err){ Http.toast(err.message||'Erro ao carregar movimentos','error'); }
+  } load();
+</script>
+{% endblock %}

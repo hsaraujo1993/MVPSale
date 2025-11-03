@@ -1,0 +1,270 @@
+<!-- 🏷️ Cabeçalho -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Produtos</h1>
+    <p class="text-slate-400 text-sm">Gerencie o catálogo e mantenha os preços atualizados.</p>
+  </div>
+  <button id="toggleForm"
+          class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    Novo Produto
+  </button>
+</div>
+
+<!-- 📦 Formulário de novo produto -->
+<div id="productFormWrap" class="hidden mb-5 bg-slate-800/50 border border-slate-700 rounded-2xl p-4 shadow-md backdrop-blur-md">
+  {% include "catalog/product/form.html" %}
+  <hr class="my-4 border-slate-700" />
+</div>
+
+<!-- 🔍 Barra de busca e filtros -->
+<div class="flex flex-wrap items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 mb-4 backdrop-blur-sm">
+  <label for="q" class="sr-only">Buscar produtos</label>
+  <input id="q" placeholder="Buscar produtos..."
+         class="flex-1 min-w-[200px] px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+  <label for="ordering" class="sr-only">Ordenação</label>
+  <select id="ordering"
+          class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+    <option value="name">Nome</option>
+    <option value="-created_at">Mais recentes</option>
+  </select>
+  <button id="applyFilters"
+          class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">
+    <i data-lucide="filter" class="w-4 h-4"></i>
+    Aplicar
+  </button>
+</div>
+
+<!-- 📋 Tabela -->
+<div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+  <table class="min-w-full text-sm border-separate border-spacing-0">
+    <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs">
+      <tr>
+        <th class="text-left px-3 py-2 font-medium">Nome</th>
+        <th class="text-left px-3 py-2 font-medium">SKU</th>
+        <th class="text-left px-3 py-2 font-medium">Preço</th>
+        <th class="text-left px-3 py-2 font-medium">Ativo</th>
+        <th class="text-left px-3 py-2 font-medium">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="rows"
+           class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition-colors duration-150">
+    </tbody>
+  </table>
+</div>
+
+<!-- 🔄 Paginação -->
+<div class="mt-4 flex items-center gap-2 text-sm">
+  <button id="prev"
+          class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">← Anterior</button>
+  <span id="pageInfo" class="text-slate-400 min-w-[80px] text-center"></span>
+  <button id="next"
+          class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Próxima →</button>
+</div>
+
+<script>
+(() => {
+  const state = { page: 1, q: '', ordering: 'name', count: 0, next: null, previous: null };
+  const rows = document.getElementById('rows');
+  const applyFilters = document.getElementById('applyFilters');
+  const q = document.getElementById('q');
+  const ordering = document.getElementById('ordering');
+  const pageInfo = document.getElementById('pageInfo');
+  const prev = document.getElementById('prev');
+  const next = document.getElementById('next');
+  const toggleForm = document.getElementById('toggleForm');
+  const formWrap = document.getElementById('productFormWrap');
+
+  if (!rows) return; // executa apenas nesta página
+
+  toggleForm.addEventListener('click', (e)=>{ e.preventDefault(); formWrap.classList.toggle('hidden'); });
+  applyFilters.addEventListener('click', ()=>{ state.q=q.value; state.ordering=ordering.value; state.page=1; load(); });
+  prev.addEventListener('click', ()=>{ if(state.previous){ state.page--; load(); }});
+  next.addEventListener('click', ()=>{ if(state.next){ state.page++; load(); }});
+
+  async function load(){
+    const params = new URLSearchParams();
+    params.set('page', state.page);
+    if (state.q) params.set('search', state.q);
+    if (state.ordering) params.set('ordering', state.ordering);
+
+    try {
+      const data = await Http.fetchJson(`/api/catalog/products/?${params}`);
+      rows.innerHTML = '';
+
+      (data.results||[]).forEach(p=>{
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-800/60";
+        tr.innerHTML = `
+          <td class="px-3 py-2 font-medium">${p.name}</td>
+          <td class="px-3 py-2">${p.sku||''}</td>
+          <td class="px-3 py-2 text-slate-300">${p.sale_price ? 'R$ '+parseFloat(p.sale_price).toFixed(2) : '-'}</td>
+          <td class="px-3 py-2">${p.active ? '<span class="text-emerald-400 font-medium">Sim</span>' : '<span class="text-slate-500">Não</span>'}</td>
+          <td class="px-3 py-2 space-x-3">
+            <button class="text-sky-400 hover:underline" data-view="${p.uuid}">Visualizar</button>
+            <button class="text-rose-400 hover:underline" data-del="${p.uuid}" data-name="${p.name}">Excluir</button>
+          </td>`;
+        rows.appendChild(tr);
+      });
+
+      rows.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.addEventListener('click', ()=> del(btn.dataset.del, btn.dataset.name));
+      });
+      rows.querySelectorAll('[data-view]').forEach(btn=>{
+        btn.addEventListener('click', ()=> view(btn.dataset.view));
+      });
+
+      state.count = data.count||0;
+      state.next = data.next;
+      state.previous = data.previous;
+      pageInfo.textContent = `Página ${state.page}`;
+    } catch(err){
+      Http.toast(err.message||'Erro ao carregar produtos', 'error');
+    }
+  }
+
+  async function del(uuid, name){
+    UI.confirm(`Excluir produto "${name||''}"?`, async ()=>{
+      try {
+        await Http.fetchJson(`/api/catalog/products/${uuid}/`, { method:'DELETE' });
+        Http.toast('Excluído com sucesso', 'success');
+        load();
+      } catch(err){
+        Http.toast(err.message||'Erro ao excluir','error');
+      }
+    }, 'Excluir', 'danger');
+  }
+
+  // 🧾 Painel de detalhe
+  const detailWrap = document.createElement('div');
+  detailWrap.className = 'mt-6';
+  document.querySelector('.overflow-x-auto')?.after(detailWrap);
+
+  async function view(uuid){
+    try{
+      const p = await Http.fetchJson(`/api/catalog/products/${uuid}/`);
+      let catOpts = '', brandOpts = '';
+      try {
+        const cats = await Http.fetchJson('/api/catalog/categories/?ordering=name');
+        catOpts = (cats.results||cats||[]).map(c=>`<option value="${c.uuid}" ${String(c.uuid)===String(p.category)?'selected':''}>${c.name}</option>`).join('');
+      } catch(e) {}
+      try {
+        const brands = await Http.fetchJson('/api/catalog/brands/?ordering=name');
+        brandOpts = (brands.results||brands||[]).map(b=>`<option value="${b.uuid}" ${String(b.uuid)===String(p.brand)?'selected':''}>${b.name}</option>`).join('');
+      } catch(e) {}
+
+      detailWrap.innerHTML = `
+        <div class="bg-slate-800/40 backdrop-blur-xl border border-slate-700 rounded-2xl p-5 shadow-xl transition">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-lg text-slate-100">Detalhe do Produto</h3>
+            <div class="space-x-2">
+              <button id="editProd" class="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm">Editar</button>
+              <button id="delProd" class="px-3 py-1.5 rounded bg-rose-600 hover:bg-rose-500 text-white text-sm">Excluir</button>
+              <button id="closeProd" class="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm">Voltar</button>
+            </div>
+          </div>
+
+          <div id="prodView" class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div class="text-sm">Nome: <span class="text-slate-300">${p.name}</span></div>
+            <div class="text-sm">SKU: <span class="text-slate-300">${p.sku||''}</span></div>
+            <div class="text-sm">Código de barras: <span class="text-slate-300">${p.barcode||''}</span></div>
+            <div class="text-sm">Categoria: <span class="text-slate-300">${p.category||''}</span></div>
+            <div class="text-sm">Marca: <span class="text-slate-300">${p.brand||''}</span></div>
+            <div class="text-sm">Preço custo: <span class="text-slate-300">${p.cost_price||''}</span></div>
+            <div class="text-sm">Margem %: <span class="text-slate-300">${p.margin||''}</span></div>
+            <div class="text-sm">Preço venda: <span class="text-slate-300">${p.sale_price||''}</span></div>
+            <div class="text-sm">Ativo: <span class="text-slate-300">${p.active? 'Sim':'Não'}</span></div>
+          </div>
+          <div id="prodEdit" class="hidden grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="md:col-span-2">
+              <label class="block text-sm text-slate-300 mb-1 font-medium">Nome</label>
+              <input id="edit_name" value="${p.name||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100" />
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1 font-medium">Código de barras</label>
+              <input id="edit_barcode" value="${p.barcode||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100" />
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1 font-medium">Categoria</label>
+              <select id="edit_category" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100">
+                ${catOpts}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1 font-medium">Marca</label>
+              <select id="edit_brand" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100">
+                ${brandOpts}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1 font-medium">Preço de custo</label>
+              <input id="edit_cost_price" type="number" step="0.01" min="0" value="${p.cost_price||0}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100" />
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1 font-medium">Margem (%)</label>
+              <input id="edit_margin" type="number" step="0.01" min="0" max="100" value="${p.margin||0}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100" />
+            </div>
+            <div class="md:col-span-3">
+              <label class="block text-sm text-slate-300 mb-1 font-medium">Descrição</label>
+              <textarea id="edit_description" rows="2" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100">${p.description||''}</textarea>
+            </div>
+            <div class="md:col-span-3 flex items-center justify-between">
+              <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                <input id="edit_active" type="checkbox" ${p.active? 'checked':''} /> Ativo
+              </label>
+              <div class="space-x-2">
+                <button id="cancelEdit" class="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm">Cancelar</button>
+                <button id="saveProd" class="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-sm">Salvar</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('closeProd').onclick = ()=> detailWrap.innerHTML='';
+      document.getElementById('editProd').onclick = ()=>{ document.getElementById('prodView').classList.add('hidden'); document.getElementById('prodEdit').classList.remove('hidden'); };
+      const cancelBtn = document.getElementById('cancelEdit');
+      if (cancelBtn) cancelBtn.onclick = ()=>{ const v=document.getElementById('prodView'); const e=document.getElementById('prodEdit'); if(v&&e){ e.classList.add('hidden'); v.classList.remove('hidden'); } };
+      const saveBtn = document.getElementById('saveProd');
+      if (saveBtn) saveBtn.onclick = async ()=>{
+        const form = document.getElementById('prodEdit') || document.getElementById('prodEdit') || document.createElement('div');
+        FormUtils.clearFieldErrors(form);
+        FormUtils.setLoading(saveBtn, true);
+        try{
+          const payload = {
+            name: document.getElementById('edit_name').value,
+            // send empty string instead of null to satisfy serializer non-null requirement
+            barcode: document.getElementById('edit_barcode').value || '',
+            category: document.getElementById('edit_category').value || '',
+            brand: document.getElementById('edit_brand').value || '',
+            cost_price: document.getElementById('edit_cost_price').value || 0,
+            margin: document.getElementById('edit_margin').value || 0,
+            description: document.getElementById('edit_description').value || '',
+            active: document.getElementById('edit_active').checked,
+          };
+          await Http.fetchJson(`/api/catalog/products/${uuid}/`, { method:'PATCH', body: JSON.stringify(payload) });
+          Http.toast('Produto atualizado', 'success');
+          await view(uuid);
+          if (typeof load === 'function') load();
+        }catch(err){
+          if(err && err.data){ FormUtils.showFieldErrors(form, err.data); }
+          else Http.toast(err.message||'Erro ao salvar','error');
+        } finally { FormUtils.setLoading(saveBtn, false); }
+      };
+      document.getElementById('delProd').onclick = async ()=>{ if(!confirm('Excluir produto?')) return; try{ await Http.fetchJson(`/api/catalog/products/${uuid}/`, { method:'DELETE' }); Http.toast('Excluído','success'); detailWrap.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } };
+    }catch(err){
+      Http.toast(err.message||'Erro ao carregar detalhe','error');
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!window._productPageInitialized) {
+      window._productPageInitialized = true;
+      load();
+    }
+  });
+})();
+</script>
+
+<!-- Ícones -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>lucide.createIcons();</script>

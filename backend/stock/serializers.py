@@ -7,12 +7,17 @@ from decimal import Decimal
 
 class StockSerializer(serializers.ModelSerializer):
     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    # provide product metadata via methods to be robust
+    product_name = serializers.SerializerMethodField()
+    product_sku = serializers.SerializerMethodField()
 
     class Meta:
         model = Stock
         fields = [
             "uuid",
             "product",
+            "product_name",
+            "product_sku",
             "quantity_current",
             "minimum",
             "maximum",
@@ -21,6 +26,18 @@ class StockSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["uuid", "quantity_current", "status", "created_at", "updated_at"]
+
+    def get_product_name(self, obj):
+        try:
+            return getattr(obj.product, 'name', None) or None
+        except Exception:
+            return None
+
+    def get_product_sku(self, obj):
+        try:
+            return getattr(obj.product, 'sku', None) or None
+        except Exception:
+            return None
 
 
 class StockMovementSerializer(serializers.ModelSerializer):

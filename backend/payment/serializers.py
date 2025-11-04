@@ -1,8 +1,11 @@
 from rest_framework import serializers
-from .models import PaymentMethod, Receivable, PaymentEvent, CardBrand, CardFeeTier
+from decimal import Decimal, InvalidOperation
+from .models import PaymentMethod, Receivable, CardBrand, CardFeeTier
 
 
 class PaymentMethodSerializer(serializers.ModelSerializer):
+    fee_percent = serializers.DecimalField(max_digits=6, decimal_places=2)
+
     class Meta:
         model = PaymentMethod
         fields = [
@@ -18,6 +21,14 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["uuid", "created_at", "updated_at"]
+
+    def validate_fee_percent(self, value):
+        try:
+            if isinstance(value, str):
+                return Decimal(value.replace(",", "."))
+            return value
+        except (InvalidOperation, ValueError):
+            raise serializers.ValidationError("Valor de fee_percent inválido")
 
 
 class ReceivableSerializer(serializers.ModelSerializer):
@@ -56,11 +67,17 @@ class CardBrandSerializer(serializers.ModelSerializer):
 
 
 class CardFeeTierSerializer(serializers.ModelSerializer):
+    # Explicit DecimalField so we can normalize strings like '1,5' -> Decimal('1.5')
+    fee_percent = serializers.DecimalField(max_digits=6, decimal_places=2)
+    # include nested brand data in responses for consistent frontend display
+    brand_detail = CardBrandSerializer(source='brand', read_only=True)
+
     class Meta:
         model = CardFeeTier
         fields = [
             "id",
             "brand",
+            "brand_detail",
             "type",
             "installments_min",
             "installments_max",
@@ -71,3 +88,14 @@ class CardFeeTierSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_fee_percent(self, value):
+        # Accept strings with comma as decimal separator from frontend (e.g. '1,5')
+        try:
+            if isinstance(value, str):
+                v = value.replace(",", ".")
+                return Decimal(v)
+            # if already Decimal or numeric, let DRF handle coercion
+            return value
+        except (InvalidOperation, ValueError):
+            raise serializers.ValidationError("Valor de fee_percent inválido")

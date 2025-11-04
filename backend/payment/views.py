@@ -1,6 +1,7 @@
 from django.db.models import Sum, Count, Q
 from django.db.models.functions import TruncMonth
 from rest_framework import viewsets, mixins, status
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema_view, extend_schema
@@ -25,12 +26,22 @@ class PaymentMethodViewSet(viewsets.ModelViewSet):
     queryset = PaymentMethod.objects.all().order_by("name")
     serializer_class = PaymentMethodSerializer
     lookup_field = "uuid"
+    permission_classes = [IsAuthenticatedOrReadOnly]
     from django_filters.rest_framework import DjangoFilterBackend
     from rest_framework import filters as drf_filters
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
     filterset_fields = {"type": ["exact"], "created_at": ["gte", "lte"], "updated_at": ["gte", "lte"]}
     search_fields = ["name", "code"]
     ordering_fields = ["name", "created_at", "updated_at"]
+
+    def create(self, request, *args, **kwargs):
+        code = request.data.get("code")
+        if code:
+            existing = PaymentMethod.objects.filter(code=code).first()
+            if existing:
+                ser = self.get_serializer(existing)
+                return Response(ser.data, status=status.HTTP_200_OK)
+        return super().create(request, *args, **kwargs)
 
 
 @extend_schema_view(
@@ -42,6 +53,7 @@ class ReceivableViewSet(viewsets.ModelViewSet):
     queryset = Receivable.objects.select_related("method").all().order_by("-created_at")
     serializer_class = ReceivableSerializer
     lookup_field = "uuid"
+    permission_classes = [IsAuthenticatedOrReadOnly]
     from django_filters.rest_framework import DjangoFilterBackend
     from rest_framework import filters as drf_filters
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
@@ -165,6 +177,7 @@ class PaymentLogsView(viewsets.ViewSet):
 class CardBrandViewSet(viewsets.ModelViewSet):
     queryset = CardBrand.objects.all().order_by("name")
     serializer_class = CardBrandSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
     from django_filters.rest_framework import DjangoFilterBackend
     from rest_framework import filters as drf_filters
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
@@ -184,6 +197,7 @@ class CardBrandViewSet(viewsets.ModelViewSet):
 class CardFeeTierViewSet(viewsets.ModelViewSet):
     queryset = CardFeeTier.objects.select_related("brand").all().order_by("brand__name", "type", "installments_min")
     serializer_class = CardFeeTierSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
     from django_filters.rest_framework import DjangoFilterBackend
     from rest_framework import filters as drf_filters
     filter_backends = [DjangoFilterBackend, drf_filters.OrderingFilter]

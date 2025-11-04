@@ -1,0 +1,37 @@
+{
+  "db": "C:\\Users\\henri\\Documents\\Git_Projetos\\MVPSale\\backend\\db.sqlite3",
+  "methods": [
+    {
+      "uuid": "10732e2e3214469191388a6b77ff6c7a",
+      "code": "Q",
+      "name": "Cartão de Credito",
+      "type": "card_credit",
+      "fee_percent": "0",
+      "fee_fixed": "0"
+    },
+    {
+      "uuid": "7962767bb9824299aa10df2e7ecd09c7",
+      "code": "visa",
+      "name": "Cartão Crédito Visa",
+      "type": "card_credit",
+      "fee_percent": "0",
+      "fee_fixed": "0"
+    },
+    {
+      "uuid": "e9270198c7f94a6ab9950a6d8295f1a8",
+      "code": "visa2",
+      "name": "Cartão Crédito Visa",
+      "type": "card_credit",
+      "fee_percent": "0",
+      "fee_fixed": "0"
+    },
+    {
+      "uuid": "6b2f182c55ab435d9d5639b677a60d17",
+      "code": "visa_e2e2",
+      "name": "Visa Credit",
+      "type": "card_credit",
+      "fee_percent": "0",
+      "fee_fixed": "0"
+    }
+  ]
+}

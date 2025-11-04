@@ -2,7 +2,6 @@ from decimal import Decimal
 import uuid
 from django.db import models, transaction
 from django.core.validators import MinValueValidator
-from django.core.exceptions import ValidationError
 
 
 class TimeStampedModel(models.Model):
@@ -29,7 +28,7 @@ class PaymentMethod(TimeStampedModel):
     code = models.SlugField(max_length=40, unique=True)
     name = models.CharField(max_length=80)
     type = models.CharField(max_length=20, choices=PAYMENT_METHOD_TYPES)
-    fee_percent = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("0.000"))
+    fee_percent = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal("0.00"))
     fee_fixed = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     settlement_days = models.PositiveIntegerField(default=0)
     auto_settle = models.BooleanField(default=False)
@@ -108,7 +107,7 @@ class CardFeeTier(TimeStampedModel):
     type = models.CharField(max_length=20, choices=CARD_TYPES)
     installments_min = models.PositiveIntegerField(default=1)
     installments_max = models.PositiveIntegerField(default=1)
-    fee_percent = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("0.000"))
+    fee_percent = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal("0.00"))
     fee_fixed = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     settlement_days = models.PositiveIntegerField(default=30)
 

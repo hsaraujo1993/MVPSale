@@ -1,5 +1,8 @@
 from rest_framework import viewsets, filters
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models.deletion import ProtectedError
+from rest_framework.response import Response
+from rest_framework import status
 
 from .models import Category, Brand, Product, Promotion
 from .serializers import (
@@ -32,6 +35,32 @@ class CategoryViewSet(viewsets.ModelViewSet):
     search_fields = ["name", "slug"]
     ordering_fields = ["name", "created_at", "updated_at"]
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        try:
+            self.perform_destroy(instance)
+        except ProtectedError as exc:
+            blocked = []
+            try:
+                for obj in exc.protected_objects:
+                    blocked.append(
+                        {
+                            "repr": str(obj),
+                            "model": obj._meta.label,
+                            "id": getattr(obj, "uuid", getattr(obj, "pk", None)),
+                        }
+                    )
+            except Exception:
+                pass
+            return Response(
+                {
+                    "detail": "Cannot delete category because other resources reference it.",
+                    "blocked": blocked,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 @extend_schema_view(
     list=extend_schema(tags=["catalog"], summary="Listar marcas"),
@@ -53,6 +82,32 @@ class BrandViewSet(viewsets.ModelViewSet):
     }
     search_fields = ["name"]
     ordering_fields = ["name", "created_at", "updated_at"]
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        try:
+            self.perform_destroy(instance)
+        except ProtectedError as exc:
+            blocked = []
+            try:
+                for obj in exc.protected_objects:
+                    blocked.append(
+                        {
+                            "repr": str(obj),
+                            "model": obj._meta.label,
+                            "id": getattr(obj, "uuid", getattr(obj, "pk", None)),
+                        }
+                    )
+            except Exception:
+                pass
+            return Response(
+                {
+                    "detail": "Cannot delete brand because other resources reference it.",
+                    "blocked": blocked,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema_view(

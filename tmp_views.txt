@@ -1,4 +1,4 @@
-Ôªøfrom decimal import Decimal
+from decimal import Decimal
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -19,49 +19,19 @@ def get_open_session() -> CashierSession | None:
 
 
 @extend_schema_view(
-    list=extend_schema(tags=["cashier"], summary="Listar sess√µes de caixa"),
-    retrieve=extend_schema(tags=["cashier"], summary="Detalhar sess√£o"),
+    list=extend_schema(tags=["cashier"], summary="Listar sessıes de caixa"),
+    retrieve=extend_schema(tags=["cashier"], summary="Detalhar sess„o"),
 )
 class CashierSessionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = CashierSession.objects.all().order_by("-opened_at")
     serializer_class = CashierSessionSerializer
     lookup_field = "uuid"
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        qp = getattr(self, "request", None).query_params if getattr(self, "request", None) else {}
-        # Filter by status if provided (OPEN/CLOSED)
-        status_val = (qp.get("status") or "").upper()
-        if status_val in ("OPEN", "CLOSED"):
-            qs = qs.filter(status=status_val)
-        # Date range filters (ISO format YYYY-MM-DD). Apply to opened_at/closed_at dates
-        date_from = qp.get("date_from")
-        date_to = qp.get("date_to")
-        from datetime import datetime
-        if date_from:
-            try:
-                qs = qs.filter(opened_at__date__gte=datetime.fromisoformat(date_from).date())
-            except Exception:
-                pass
-        if date_to:
-            try:
-                qs = qs.filter(closed_at__date__lte=datetime.fromisoformat(date_to).date())
-            except Exception:
-                pass
-        # Ordering support via ?ordering=field (defaults handled by DRF ordering filter or queryset order)
-        ordering = qp.get("ordering")
-        if ordering:
-            try:
-                qs = qs.order_by(ordering)
-            except Exception:
-                pass
-        return qs
-
     @extend_schema(request=OpenSessionSerializer, tags=["cashier"], summary="Abrir caixa")
     @action(detail=False, methods=["post"], url_path="open")
     def open(self, request):
         if get_open_session():
-            return Response({"detail": "J√° existe um caixa aberto."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "J· existe um caixa aberto."}, status=status.HTTP_400_BAD_REQUEST)
         ser = OpenSessionSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         sess = CashierSession.objects.create(
@@ -74,13 +44,13 @@ class CashierSessionViewSet(viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(request=CloseSessionSerializer, tags=["cashier"], summary="Fechar caixa")
     @action(detail=True, methods=["post"], url_path="close")
-    def close(self, request, uuid=None):
+    def close(self, request, pk=None):
         try:
-            sess = CashierSession.objects.get(uuid=uuid)
+            sess = CashierSession.objects.get(uuid=pk)
         except CashierSession.DoesNotExist:
-            return Response({"detail": "Sess√£o n√£o encontrada."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Sess„o n„o encontrada."}, status=status.HTTP_404_NOT_FOUND)
         if sess.status != "OPEN":
-            return Response({"detail": "Sess√£o j√° est√° fechada."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Sess„o j· est· fechada."}, status=status.HTTP_400_BAD_REQUEST)
         ser = CloseSessionSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         sess.closing_amount = ser.validated_data["closing_amount"]
@@ -93,7 +63,7 @@ class CashierSessionViewSet(viewsets.ReadOnlyModelViewSet):
         sess.save()
         return Response(CashierSessionSerializer(sess).data)
 
-    @extend_schema(tags=["cashier"], summary="Sess√£o aberta atual")
+    @extend_schema(tags=["cashier"], summary="Sess„o aberta atual")
     @action(detail=False, methods=["get"], url_path="current")
     def current(self, request):
         sess = get_open_session()
@@ -101,7 +71,7 @@ class CashierSessionViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"detail": "Nenhum caixa aberto."}, status=status.HTTP_404_NOT_FOUND)
         return Response(CashierSessionSerializer(sess).data)
 
-    @extend_schema(tags=["cashier"], summary="Resumo da sess√£o aberta atual")
+    @extend_schema(tags=["cashier"], summary="Resumo da sess„o aberta atual")
     @action(detail=False, methods=["get"], url_path="current/summary")
     def current_summary(self, request):
         from django.db.models import Sum
@@ -148,7 +118,7 @@ class CashierSessionViewSet(viewsets.ReadOnlyModelViewSet):
             },
         })
 
-    @extend_schema(tags=["cashier"], summary="Resumo das √∫ltimas sess√µes fechadas")
+    @extend_schema(tags=["cashier"], summary="Resumo das ˙ltimas sessıes fechadas")
     @action(detail=False, methods=["get"], url_path="history/summary")
     def history_summary(self, request):
         from django.db.models import Sum
@@ -266,4 +236,5 @@ class CashMovementViewSet(viewsets.ModelViewSet):
             sess.expected_amount = (sess.opening_amount or Decimal("0.00")) + inflow - outflow
             sess.save(update_fields=["expected_amount", "updated_at"])
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 

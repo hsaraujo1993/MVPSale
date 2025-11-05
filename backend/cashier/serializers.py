@@ -1,14 +1,19 @@
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 from .models import CashierSession, CashMovement
 
 
 class CashierSessionSerializer(serializers.ModelSerializer):
+    opened_by_name = serializers.SerializerMethodField(read_only=True)
+    closed_by_name = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = CashierSession
         fields = [
             "uuid",
             "opened_by",
             "closed_by",
+            "opened_by_name",
+            "closed_by_name",
             "opened_at",
             "closed_at",
             "opening_amount",
@@ -31,6 +36,24 @@ class CashierSessionSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def get_opened_by_name(self, obj):
+        try:
+            user = obj.opened_by
+            full = (user.get_full_name() or "").strip()
+            return full or user.username
+        except Exception:
+            return ""
+
+    def get_closed_by_name(self, obj):
+        try:
+            user = obj.closed_by
+            if not user:
+                return ""
+            full = (user.get_full_name() or "").strip()
+            return full or user.username
+        except Exception:
+            return ""
 
 
 class OpenSessionSerializer(serializers.Serializer):

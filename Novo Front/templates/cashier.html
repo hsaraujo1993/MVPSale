@@ -1,38 +1,102 @@
-{% extends "base.html" %}
-{% block title %}Caixa · MVPSale{% endblock %}
+﻿{% extends "base.html" %}
+{% block title %}Caixa - MVPSale{% endblock %}
 {% block content %}
 {% include "partials/breadcrumb.html" with b1="Caixa" %}
 <h1 class="text-2xl font-semibold mb-4">Caixa</h1>
-
-<div id="statusBox" class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 mb-4">
-  <h2 class="font-medium mb-2">Status</h2>
-  <div id="statusText" class="text-sm text-slate-300">Carregando…</div>
-  </div>
-
-<div id="openBox" class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 mb-4 hidden">
-  <h3 class="font-medium mb-2">Abrir Caixa</h3>
-  <form id="openForm" class="flex gap-2 items-end">
-    <div>
-      <label class="block text-sm mb-1">Valor de abertura</label>
-      <input name="opening_amount" type="number" step="0.01" class="px-3 py-2 rounded bg-slate-900 border border-slate-700" value="0" />
+<div id="statusBox" class="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 mb-4 shadow">
+  <div class="flex items-center justify-between mb-2">
+    <h2 class="font-medium text-slate-100">Status do Caixa</h2>
+    <div class="flex items-center gap-2">
+      <span id="statusUpdated" class="text-xs text-slate-400"></span>
+      <button type="button" id="statusRefresh" class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs">Atualizar</button>
     </div>
-    <button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Abrir</button>
-  </form>
   </div>
-
-<div id="closeBox" class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 mb-4 hidden">
-  <h3 class="font-medium mb-2">Fechar Caixa</h3>
-  <form id="closeForm" class="flex gap-2 items-end">
+  <div id="statusText" class="text-sm text-slate-300">Carregando...</div>
+</div>
+<div id="openBox" class="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 mb-4 hidden shadow">
+  <div class="flex items-center justify-between mb-2">
+    <h3 class="font-medium text-slate-100">Abrir Caixa</h3>
+    <div class="text-xs text-slate-400">Sugerir valor baseado em pedidos confirmados de hoje</div>
+  </div>
+  <form id="openForm" class="flex flex-wrap gap-3 items-end">
     <div>
-      <label class="block text-sm mb-1">Valor de fechamento</label>
-      <input name="closing_amount" type="number" step="0.01" class="px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+      <label class="block text-sm mb-1 text-slate-300">Valor de abertura</label>
+      <input name="opening_amount" id="opening_amount" type="number" step="0.01" class="px-3 py-2 rounded-lg bg-slate-900/80 border border-slate-700 text-slate-100" value="0" />
     </div>
-    <button class="bg-rose-600 hover:bg-rose-500 transition text-white rounded px-3 py-2">Fechar</button>
+    <div class="flex items-end gap-2">
+      <button type="button" id="calcOpen" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 text-sm">Sugerir (Confirmados hoje)</button>
+    </div>
+    <div class="ml-auto"></div>
+    <button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded-lg px-3 py-2">Abrir</button>
   </form>
+</div>
+<div id="closeBox" class="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 mb-4 hidden shadow">
+  <div class="flex items-center justify-between mb-2">
+    <h3 class="font-medium text-slate-100">Fechar Caixa</h3>
+    <div class="text-xs text-slate-400">Calcular com base em pedidos confirmados de hoje</div>
   </div>
-
+  <form id="closeForm" class="flex flex-wrap gap-3 items-end">
+    <div>
+      <label class="block text-sm mb-1 text-slate-300">Valor de fechamento</label>
+      <input name="closing_amount" id="closing_amount" type="number" step="0.01" class="px-3 py-2 rounded-lg bg-slate-900/80 border border-slate-700 text-slate-100" />
+    </div>
+    <div class="ml-auto"></div>
+    <button class="bg-rose-600 hover:bg-rose-500 transition text-white rounded-lg px-3 py-2">Fechar</button>
+  </form>
+</div>
+<div class="flex flex-wrap items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 mb-4 backdrop-blur-sm">
+  <label for="c_status" class="sr-only">Status</label>
+  <select id="c_status" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+    <option value="">Todos</option>
+    <option value="OPEN">Aberto</option>
+    <option value="CLOSED">Fechado</option>
+  </select>
+  <label for="c_ordering" class="sr-only">OrdenaÃƒÂ§ÃƒÂ£o</label>
+  <select id="c_ordering" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+    <option value="-opened_at">Mais recentes</option>
+    <option value="opened_at">Mais antigos</option>
+  </select>
+  <label for="c_from" class="sr-only">De</label>
+  <input id="c_from" type="date" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+  <label for="c_to" class="sr-only">AtÃƒÂ©</label>
+  <input id="c_to" type="date" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+  <button id="c_apply" class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">Aplicar</button>
+  <button id="c_clear" class="flex items-center gap-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded transition text-sm">Limpar</button>
+  <div id="c_statusChips" class="flex items-center gap-2 text-sm ml-auto">
+    <button data-status="" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Todos</button>
+    <button data-status="OPEN" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Aberto</button>
+    <button data-status="CLOSED" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Fechado</button>
+  </div>
+  <div id="c_active" class="flex flex-wrap items-center gap-2 text-xs text-slate-300"></div>
+</div>
+<div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+  <table class="min-w-full text-sm border-separate border-spacing-0">
+    <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs sticky top-0 z-10">
+      <tr>
+        <th class="text-left px-3 py-2 font-medium">Aberto em</th>
+        <th class="text-left px-3 py-2 font-medium">Fechado em</th>
+        <th class="text-left px-3 py-2 font-medium">Aberto por</th>
+        <th class="text-left px-3 py-2 font-medium">Fechado por</th>
+        <th class="text-left px-3 py-2 font-medium">Abertura</th>
+        <th class="text-left px-3 py-2 font-medium">Esperado</th>
+        <th class="text-left px-3 py-2 font-medium">Fechamento</th>
+        <th class="text-left px-3 py-2 font-medium">Diferenca</th>
+        <th class="text-left px-3 py-2 font-medium">Status</th>
+        <th class="text-left px-3 py-2 font-medium">Notas</th>
+        <th class="text-left px-3 py-2 font-medium">Acoes</th>
+      </tr>
+    </thead>
+    <tbody id="c_rows"></tbody>
+  </table>
+</div>
+<div class="mt-4 flex items-center gap-2 text-sm">
+  <button id="c_prev" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1">Anterior</button>
+  <span id="c_pageInfo" class="text-slate-400 min-w-[80px] text-center"></span>
+  <button id="c_next" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1">PrÃƒÂ³xima</button>
+</div>
 <script>
   const statusText = document.getElementById('statusText');
+  const statusRefresh = document.getElementById('statusRefresh');
   const openBox = document.getElementById('openBox');
   const closeBox = document.getElementById('closeBox');
   let currentSessionUUID = null;
@@ -40,12 +104,41 @@
     try{
       const s = await Http.fetchJson('/api/cashier/sessions/current/');
       currentSessionUUID = s.uuid;
-      statusText.textContent = `Aberto em ${s.opened_at} • Abertura R$ ${s.opening_amount || '0,00'}`;
+      let summary = null; try{ summary = await Http.fetchJson('/api/cashier/sessions/current/summary/'); }catch(e){}
+      const openedBy = (s.opened_by_name||'').trim() || (s.opened_by ?? '-');
+      function pad2(n){ return String(n).padStart(2,'0'); }
+      function fmtDateTime(sv){ try{ if(!sv) return '-'; const d=new Date(sv); if(isNaN(d.getTime())) return '-'; return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}` }catch(e){ return '-' } }
+      function money(v){ try{ const n=parseFloat(v||0); return 'R$ '+n.toFixed(2) }catch(e){ return 'R$ 0,00' } }
+      const inflow = parseFloat((summary && (summary.inflow_total ?? summary.inflow)) ?? 0) || 0;
+      const outflow = parseFloat((summary && (summary.outflow_total ?? summary.outflow)) ?? 0) || 0;
+      const expected = parseFloat((summary && (summary.expected_amount ?? summary.expected)) ?? (s.expected_amount ?? 0)) || 0;
+      let confirmedSumToday = 0; try { confirmedSumToday = await sumConfirmedOrdersToday(); } catch(e){}
+      const badge = '<span class="inline-block px-2 py-0.5 rounded-full bg-emerald-700 text-white text-xs">Aberto</span>';
+      statusText.innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-3"><div class="text-xs text-slate-400 mb-1">Status</div><div>${badge}</div></div>
+          <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-3"><div class="text-xs text-slate-400 mb-1">Aberto por</div><div class="text-slate-100">${openedBy}</div></div>
+          <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-3"><div class="text-xs text-slate-400 mb-1">Aberto em</div><div class="text-slate-100">${fmtDateTime(s.opened_at)}</div></div>
+          <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-3">
+            <div class="text-xs text-slate-400 mb-1">Vendas confirmadas</div>
+            <div class="text-emerald-300 font-medium">${money(confirmedSumToday)}</div>
+            <div class="text-xs text-slate-400 mt-1">Movimentos de caixa: <span class="text-slate-200">${money(inflow)}</span></div>
+          </div>
+          <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-3"><div class="text-xs text-slate-400 mb-1">Saída</div><div class="text-rose-300 font-medium">${money(outflow)}</div></div>
+          <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-3"><div class="text-xs text-slate-400 mb-1">Esperado agora</div><div class="text-slate-100 font-semibold">${money(expected)}</div></div>
+        </div>`;
+      const now=new Date(); const hh=String(now.getHours()).padStart(2,'0'); const mi=String(now.getMinutes()).padStart(2,'0');
+      const up=document.getElementById('statusUpdated'); if (up) up.textContent =  `Atualizado às ${hh}:${mi}`;
+      try { await updateSuggestionsOnRefresh(); } catch(e){}
+      try { const ca=document.getElementById('closing_amount'); if (ca) ca.value = confirmedSumToday.toFixed(2); const cs=document.getElementById('closeSuggest'); if (cs) cs.textContent = `Sugerido: R$ ${confirmedSumToday.toFixed(2)}`; } catch(e){}
+
       openBox.classList.add('hidden');
       closeBox.classList.remove('hidden');
     }catch(err){
       currentSessionUUID = null;
-      statusText.textContent = 'Fechado';
+      statusText.innerHTML = '<span class="inline-block px-2 py-0.5 rounded-full bg-slate-700 text-slate-200 text-xs">Fechado</span>';
+      const now=new Date(); const hh=String(now.getHours()).padStart(2,'0'); const mi=String(now.getMinutes()).padStart(2,'0');
+      const up=document.getElementById('statusUpdated'); if (up) up.textContent = `Atualizado às ${hh}:${mi}`;
       openBox.classList.remove('hidden');
       closeBox.classList.add('hidden');
     }
@@ -86,6 +179,100 @@
       finally{ FormUtils.setLoading(submitBtn, false); }
     }, 'Fechar Caixa');
   });
+  // Helpers para sugestao baseada em pedidos confirmados
+  async function sumConfirmedOrdersToday(){
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth()+1).padStart(2,'0');
+    const dd = String(today.getDate()).padStart(2,'0');
+    const start = `${yyyy}-${mm}-${dd}T00:00:00`;
+    const end = `${yyyy}-${mm}-${dd}T23:59:59`;
+    let page = 1, total = 0;
+    while (true){
+      const params = new URLSearchParams();
+      params.set('status','CONFIRMED');
+      params.set('created_at__gte', start);
+      params.set('created_at__lte', end);
+      params.set('ordering','-created_at');
+      params.set('page', String(page));
+      const data = await Http.fetchJson(`/api/sale/orders/?${params.toString()}`);
+      const arr = (data && data.results) ? data.results : (Array.isArray(data)?data:[]);
+      for (const o of arr){ const n = parseFloat(o.total||0); if (!isNaN(n)) total += n; }
+      if (!data || !data.next) break; page += 1; if (page > 50) break;
+    }
+    return total;
+  }
+  const calcOpenBtn = document.getElementById('calcOpen');
+  const openSuggest = document.getElementById('openSuggest');
+  const closeSuggest = document.getElementById('closeSuggest');
+  const openingAmount = document.getElementById('opening_amount');
+  const closingAmount = document.getElementById('closing_amount');
+  async function updateSuggestionsOnRefresh(){
+    const sum = await sumConfirmedOrdersToday();
+    if (openSuggest) openSuggest.textContent = `Sugerido: R$ ${sum.toFixed(2)}`;
+    if (closeSuggest) closeSuggest.textContent = `Sugerido: R$ ${sum.toFixed(2)}`;
+  }
+  if (calcOpenBtn){ calcOpenBtn.addEventListener('click', async ()=>{ try{ calcOpenBtn.disabled=true; openSuggest.textContent='Calculando...'; const sum=await sumConfirmedOrdersToday(); openSuggest.textContent=`Sugerido: R$ ${sum.toFixed(2)}`; if(openingAmount) openingAmount.value=sum.toFixed(2);} finally{ calcOpenBtn.disabled=false; } }); }
+  // Removido botão de cálculo manual do fechamento (preenchimento automático)
+  if (statusRefresh){ statusRefresh.addEventListener('click', ()=> refresh()); }
   refresh();
+  // Listagem de sessoes de caixa
+  (function(){
+    const state = { page: 1, status: '', ordering: '-opened_at', next: null, previous: null };
+    const rows = document.getElementById('c_rows');
+    const statusSel = document.getElementById('c_status');
+    const orderingSel = document.getElementById('c_ordering');
+    const fromInp = document.getElementById('c_from');
+    const toInp = document.getElementById('c_to');
+    const applyBtn = document.getElementById('c_apply');
+    const prevBtn = document.getElementById('c_prev');
+    const nextBtn = document.getElementById('c_next');
+    const pageInfo = document.getElementById('c_pageInfo');
+    const chips = document.getElementById('c_statusChips');
+    const clearBtn = document.getElementById('c_clear');
+    const activeWrap = document.getElementById('c_active');
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function fmtDateTime(s){ try { const d=new Date(s); if(isNaN(d.getTime())) return '-'; return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; } catch(e){ return '-'; } }
+    function money(v){ try { const n=parseFloat(v||0); return 'R$ '+n.toFixed(2); } catch(e){ return 'R$ 0,00'; } }
+    function statusBadge(st){ const x=String(st||'').toUpperCase(); let cls='bg-slate-700 text-slate-200', txt=x; if(x==='OPEN'){cls='bg-emerald-700 text-white'; txt='Aberto';} else if(x==='CLOSED'){cls='bg-slate-600 text-white'; txt='Fechado';} return `<span class="inline-block px-2 py-0.5 rounded-full ${cls}">${txt}</span>`; }
+    function hasActiveFilters(){ return !!(state.status || (fromInp.value||'').trim() || (toInp.value||'').trim() || (state.ordering && state.ordering !== '-opened_at')); }
+    function renderActive(){ if (!activeWrap) return; activeWrap.innerHTML=''; const items=[]; if(state.status){ const label= state.status==='OPEN'?'Aberto':(state.status==='CLOSED'?'Fechado':state.status); items.push({key:'status',text:`Status: ${label}`}); } if((fromInp.value||'').trim()) items.push({key:'from',text:`De: ${fromInp.value}`}); if((toInp.value||'').trim()) items.push({key:'to',text:`Ate: ${toInp.value}`}); if(state.ordering && state.ordering!=='-opened_at'){ const ord= state.ordering==='opened_at'?'Mais antigos':'Custom'; items.push({key:'ordering',text:`Ordem: ${ord}`}); } if(items.length){ const prefix=document.createElement('span'); prefix.className='text-slate-400 mr-1'; prefix.textContent='Filtros:'; activeWrap.appendChild(prefix);} items.forEach(it=>{ const btn=document.createElement('button'); btn.className='px-2 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800'; btn.setAttribute('data-clear',it.key); btn.textContent=it.text+' ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¢'; activeWrap.appendChild(btn); }); if(hasActiveFilters()){ applyBtn.classList.remove('bg-slate-700','hover:bg-slate-600'); applyBtn.classList.add('bg-sky-700','hover:bg-sky-600','ring-1','ring-sky-500/40'); } else { applyBtn.classList.remove('bg-sky-700','hover:bg-sky-600','ring-1','ring-sky-500/40'); applyBtn.classList.add('bg-slate-700','hover:bg-slate-600'); } }
+    async function load(){
+      const params = new URLSearchParams(); params.set('page', state.page); if (state.status) params.set('status', state.status); if (state.ordering) params.set('ordering', state.ordering); const df=(fromInp.value||'').trim(); if(df) params.set('date_from', df); const dt=(toInp.value||'').trim(); if(dt) params.set('date_to', dt);
+      try {
+        const data = await Http.fetchJson(`/api/cashier/sessions/?${params.toString()}`);
+        const list = data.results || data || [];
+        rows.innerHTML = '';
+        let arr = Array.isArray(list) ? list : [];
+        arr.forEach(s => {
+          const tr = document.createElement('tr');
+          tr.className = 'border-b border-slate-800 hover:bg-slate-800/40';
+          tr.innerHTML = `
+            <td class="px-3 py-2">${fmtDateTime(s.opened_at)}</td>
+            <td class="px-3 py-2">${fmtDateTime(s.closed_at)}</td>
+            <td class="px-3 py-2 text-slate-400">${(s.opened_by_name||'').trim() || (s.opened_by ?? '-')}</td>
+            <td class="px-3 py-2 text-slate-400">${(s.closed_by_name||'').trim() || (s.closed_by ?? '-')}</td>
+            <td class="px-3 py-2">${money(s.opening_amount)}</td>
+            <td class="px-3 py-2">${money(s.expected_amount)}</td>
+            <td class="px-3 py-2">${s.closing_amount==null?'-':money(s.closing_amount)}</td>
+            <td class="px-3 py-2 ${parseFloat(s.difference||0)===0?'text-slate-200':(parseFloat(s.difference)>0?'text-emerald-300':'text-rose-300')}">${money(s.difference)}</td>
+            <td class="px-3 py-2">${statusBadge(s.status)}</td>
+            <td class="px-3 py-2 text-slate-400 truncate max-w-[200px]" title="${s.notes||''}">${s.notes||''}</td>
+            <td class="px-3 py-2"><a href="/orders" class="text-sky-400 hover:underline">Visualizar</a></td>`;
+          rows.appendChild(tr);
+        });
+        state.next = data.next || null; state.previous = data.previous || null; pageInfo.textContent = `Pagina ${state.page}`; renderActive();
+      } catch (e) {
+        rows.innerHTML = `<tr><td colspan="11" class="px-3 py-3 text-center text-rose-300">Erro ao carregar sessoes: ${e.message||e}</td></tr>`; renderActive();
+      }
+    }
+    chips.addEventListener('click', (ev)=>{ const btn = ev.target.closest('button'); if(!btn) return; state.status = btn.getAttribute('data-status')||''; statusSel.value = state.status; state.page=1; renderActive(); load(); });
+    applyBtn.addEventListener('click', ()=>{ state.status=statusSel.value; state.ordering=orderingSel.value; state.page=1; renderActive(); load(); });
+    clearBtn.addEventListener('click', ()=>{ statusSel.value=''; orderingSel.value='-opened_at'; fromInp.value=''; toInp.value=''; state.status=''; state.ordering='-opened_at'; state.page=1; renderActive(); load(); });
+    if (activeWrap){ activeWrap.addEventListener('click', (ev)=>{ const btn = ev.target.closest('button[data-clear]'); if (!btn) return; const k = btn.getAttribute('data-clear'); if (k==='status'){ state.status=''; statusSel.value=''; } if (k==='from'){ fromInp.value=''; } if (k==='to'){ toInp.value=''; } if (k==='ordering'){ state.ordering='-opened_at'; orderingSel.value='-opened_at'; } state.page=1; renderActive(); load(); }); }
+    prevBtn.addEventListener('click', ()=>{ if(state.previous){ state.page--; load(); }});
+    nextBtn.addEventListener('click', ()=>{ if(state.next){ state.page++; load(); }});
+    load();
+  })();
 </script>
 {% endblock %}

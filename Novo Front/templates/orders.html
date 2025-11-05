@@ -32,6 +32,7 @@
     <button data-status="" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Todos</button>
     <button data-status="DRAFT" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Rascunho</button>
     <button data-status="CONFIRMED" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Confirmado</button>
+    <button data-status="CANCELLED" class="chip px-3 py-1.5 rounded bg-slate-900 text-slate-300 border border-slate-700">Cancelado</button>
   </div>
 </div>
 
@@ -40,6 +41,7 @@
     <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs">
       <tr>
         <th class="text-left px-3 py-2 font-medium">Pedido</th>
+        <th class="text-left px-3 py-2 font-medium">Tipo</th>
         <th class="text-left px-3 py-2 font-medium">Status</th>
         <th class="text-left px-3 py-2 font-medium">Total</th>
         <th class="text-left px-3 py-2 font-medium">Criado em</th>
@@ -69,6 +71,21 @@
     const pageInfo = document.getElementById('pageInfo');
     const only = document.getElementById('onlyConfirmed');
 
+    // Garante coluna "Tipo" no cabeçalho (segunda posição)
+    try {
+      const theadRow = document.querySelector('table thead tr');
+      if (theadRow && (!Array.from(theadRow.children).some(th => (th.textContent||'').trim() === 'Tipo'))) {
+        const th = document.createElement('th');
+        th.className = 'text-left px-3 py-2 font-medium';
+        th.textContent = 'Tipo';
+        if (theadRow.children.length > 1) {
+          theadRow.insertBefore(th, theadRow.children[1]);
+        } else {
+          theadRow.appendChild(th);
+        }
+      }
+    } catch(e) {}
+
     function fmtMoney(v){ try { return 'R$ ' + (parseFloat(v)||0).toFixed(2); } catch(e){ return 'R$ 0,00'; } }
     function pad2(n){ return String(n).padStart(2,'0'); }
     function fmtDateTime(s){
@@ -94,20 +111,13 @@
         const so = (o.sales_order && String(o.sales_order).length) ? o.sales_order : '-';
         const typ = (String(o.order_type||'carrinho').toLowerCase()==='orcamento') ? 'Orçamento' : 'Pedido';
         const typeBadge = `<span class="ml-2 inline-block px-2 py-0.5 rounded-full text-xs ${typ==='Orçamento' ? 'bg-amber-700 text-white' : 'bg-slate-700 text-slate-200'}">${typ}</span>`;
-        const tdPedido = document.createElement('td'); tdPedido.className='px-3 py-2'; tdPedido.innerHTML = `${so} ${typeBadge}`; tr.appendChild(tdPedido);
+        const tdPedido = document.createElement('td'); tdPedido.className='px-3 py-2'; tdPedido.textContent = `${so}`; tr.appendChild(tdPedido); const tdTipo = document.createElement('td'); tdTipo.className='px-3 py-2'; tdTipo.innerHTML = typeBadge; tr.appendChild(tdTipo);
         const tdStatus = document.createElement('td'); tdStatus.className='px-3 py-2'; tdStatus.innerHTML = statusBadge(o.status); tr.appendChild(tdStatus);
         const tdTotal = document.createElement('td'); tdTotal.className='px-3 py-2'; tdTotal.textContent = fmtMoney(o.total||0); tr.appendChild(tdTotal);
         const tdCreated = document.createElement('td'); tdCreated.className='px-3 py-2'; tdCreated.textContent = fmtDateTime(o.created_at); tr.appendChild(tdCreated);
 
         const tdActions = document.createElement('td'); tdActions.className='px-3 py-2 flex flex-wrap gap-2';
-        const view = document.createElement('a'); view.href = `/orders/confirm?id=${o.uuid}`; view.className='px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-white text-xs'; view.textContent='Ver'; tdActions.appendChild(view);
-        if (String(o.status||'').toUpperCase()==='DRAFT'){
-          const edit = document.createElement('a'); edit.href = `/sales?order=${o.uuid}`; edit.className='px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-white text-xs'; edit.textContent='Editar'; tdActions.appendChild(edit);
-          const confirmBtn = document.createElement('button'); confirmBtn.className='px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-xs'; confirmBtn.textContent='Confirmar'; confirmBtn.addEventListener('click', async ()=>{ try{ await Http.fetchJson(`/api/sale/orders/${o.uuid}/action/`, { method:'POST', body: JSON.stringify({ action:'confirm' })}); Http.toast('Pedido confirmado','success'); load(); }catch(e){ Http.toast(e.message||'Erro ao confirmar','error'); } }); tdActions.appendChild(confirmBtn);
-        } else if (String(o.status||'').toUpperCase()==='CONFIRMED'){
-          const faturar = document.createElement('a'); faturar.href = '/nfe?order='+o.uuid; faturar.target='_blank'; faturar.className='px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs'; faturar.textContent='Faturar'; tdActions.appendChild(faturar);
-          const cancelar = document.createElement('button'); cancelar.className='px-2 py-1 rounded bg-amber-500 hover:bg-amber-400 text-black text-xs'; cancelar.textContent='Cancelar'; cancelar.addEventListener('click', async ()=>{ try{ await Http.fetchJson(`/api/sale/orders/${o.uuid}/action/`, { method:'POST', body: JSON.stringify({ action:'cancel' })}); Http.toast('Pedido cancelado','success'); load(); }catch(e){ Http.toast(e.message||'Erro ao cancelar','error'); } }); tdActions.appendChild(cancelar);
-        }
+        const view = document.createElement('a'); view.href = `/orders/confirm?id=${o.uuid}`; view.className='text-sky-400 hover:underline'; view.textContent='Visualizar'; tdActions.appendChild(view);
         tr.appendChild(tdActions);
         rows.appendChild(tr);
       });

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-br" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login · MVPSale</title>
+    <script>
+      (function(){
+        try {
+          var p = location.pathname;
+          if (p && p.indexOf('/catalogtab=') > -1) {
+            var tab = p.split('catalogtab=')[1] || '';
+            if (tab) location.replace('/catalog?tab=' + encodeURIComponent(tab));
+          }
+        } catch(e){}
+      })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: { extend: {} },
+      };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="/static/js/csrf.js?v=20251030"></script>
+    <script src="/static/js/http.js?v=20251030"></script>
+    <script src="/static/js/form-utils.js?v=20251030"></script>
+    <script src="/static/js/ui.js?v=20251030" defer></script>
+  </head>
+  <body class="bg-slate-900 text-slate-100 min-h-screen" x-data="{ sidebarVisible:false }">
+    <div id="toast" x-data="{ show:false, message:'', type:'info', timeout:null }" x-show="show"
+     x-transition
+     @show-toast.window="message=$event.detail.message; type=$event.detail.type||'info'; show=true; clearTimeout(timeout); timeout=setTimeout(()=>show=false, 3000)"
+     role="status" aria-live="polite"
+     class="fixed top-4 right-4 z-[9999] px-4 py-3 rounded shadow text-sm"
+     :class="{ 'bg-emerald-600 text-white': type==='success', 'bg-rose-600 text-white': type==='error', 'bg-slate-800 text-slate-100': type==='info' }">
+  <span x-text="message"></span>
+</div>
+
+
+    <div class="flex min-h-screen">
+      
+      <div class="flex-1 flex flex-col">
+        
+        <main class="p-6">
+          
+<div class="min-h-[70vh] flex items-center justify-center">
+  <div class="w-full max-w-sm bg-slate-800/40 backdrop-blur-xl border border-slate-700 rounded-2xl p-6 shadow-lg">
+    <div class="text-center mb-5">
+      <h1 class="text-2xl font-semibold text-slate-100 mb-1">Bem-vindo ao MVPSale</h1>
+      <p class="text-slate-400 text-sm">Faça login para continuar</p>
+    </div>
+
+    <form id="loginForm" method="post" action="/login" class="space-y-4">
+      <input type="hidden" name="csrfmiddlewaretoken" value="Al3VcFLb6NWnDPVaFYf05CZ1qfjTCLOKUExbrQsQEAU6ELClpxX5DL6hbGfeXdmQ">
+      
+
+      <div>
+        <label for="id_username" class="block text-sm mb-1 text-slate-300 font-medium">Usuário</label>
+        <input id="id_username" name="username" aria-label="Usuário"
+               class="w-full px-3 py-2 rounded-lg bg-slate-900/70 border border-slate-700 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 outline-none"
+               placeholder="admin"
+               required
+               value="" />
+        
+      </div>
+
+      <div>
+        <label for="id_password" class="block text-sm mb-1 text-slate-300 font-medium">Senha</label>
+        <input id="id_password" name="password" aria-label="Senha"
+               type="password"
+               class="w-full px-3 py-2 rounded-lg bg-slate-900/70 border border-slate-700 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 outline-none"
+               placeholder="••••••"
+               required />
+        
+      </div>
+
+      <button class="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 transition text-white rounded-lg px-3 py-2 font-medium shadow">
+        <i data-lucide="log-in" class="w-4 h-4"></i>
+        Entrar
+      </button>
+
+      <p class="text-xs text-slate-400 text-center mt-3">Use seu usuário e senha do sistema.</p>
+    </form>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>try{lucide.createIcons();}catch(e){}</script>
+
+        </main>
+      </div>
+    </div>
+    <div x-data="{ open:false, title:'Confirmar', message:'Tem certeza?', onConfirm:null, type:'confirm' }" x-show="open" x-cloak
+     @show-confirm.window="title=$event.detail.title||'Confirmar'; message=$event.detail.message||'Tem certeza?'; onConfirm=$event.detail.onConfirm||null; type=$event.detail.type||'confirm'; open=true"
+     class="fixed inset-0 z-50 flex items-center justify-center">
+  <div class="absolute inset-0 bg-black/60" @click="open=false"></div>
+  <div class="relative bg-slate-800 border border-slate-700 rounded-xl p-4 w-full max-w-sm">
+    <div class="flex items-center gap-2 mb-2">
+      <div class="w-2 h-2 rounded-full" :class="{ 'bg-emerald-500': type!=='danger', 'bg-rose-500': type==='danger' }"></div>
+      <h3 class="font-medium" x-text="title"></h3>
+    </div>
+    <p class="text-sm text-slate-300 mb-4" x-text="message"></p>
+    <div class="flex justify-end gap-2">
+      <button class="px-3 py-2 rounded bg-slate-700" @click="open=false">Cancelar</button>
+      <button class="px-3 py-2 rounded text-white" :class="{ 'bg-rose-600': type==='danger', 'bg-emerald-600': type!=='danger' }" @click="onConfirm?.(); open=false">Confirmar</button>
+    </div>
+  </div>
+  </div>
+
+  </body>
+  </html>
+

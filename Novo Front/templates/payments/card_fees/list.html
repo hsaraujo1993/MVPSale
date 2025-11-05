@@ -43,7 +43,7 @@
     <div>
       <label for="fee_percent" class="sr-only">Taxa porcentagem</label>
       <label class="block text-sm mb-1">Taxa %</label>
-      <input id="fee_percent" name="fee_percent" type="number" step="0.001" min="0" value="0" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+      <input id="fee_percent" name="fee_percent" type="number" step="0.01" min="0" value="0" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
     </div>
     <div>
       <label for="settlement_days_fee" class="sr-only">D+ Liquidação</label>
@@ -80,11 +80,27 @@
   const feeBrand = document.getElementById('feeBrand');
   toggleNewFee?.addEventListener('click', async (e)=>{ e.preventDefault(); newFeeWrap.classList.toggle('hidden'); if(!newFeeWrap.classList.contains('hidden')) { await loadBrands(); }});
   async function loadBrands(){
-    try{ const data = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); const arr = data.results || data || []; feeBrand.innerHTML = arr.map(b=>`<option value="${b.id}">${b.name}</option>`).join(''); }catch(e){}
+    try{
+      const data = await Http.fetchJson('/api/payment/card-brands/?ordering=name');
+      const arr = data.results || data || [];
+      feeBrand.innerHTML = arr.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+      // populate brands cache for display
+      try{ window._cardBrandsCache = (window._cardBrandsCache || {}); arr.forEach(b=> window._cardBrandsCache[b.id]=b.name); }catch(e){}
+    }catch(e){}
   }
+  // preload brands cache so rows can render names instead of ids
+  try{ loadBrands(); }catch(e){}
+  // mapping of type codes to human readable names
+  const feeTypeNames = { card_credit: 'Cartão de Crédito', card_debit: 'Cartão de Débito' };
   document.getElementById('newFeeForm')?.addEventListener('submit', async (e)=>{
     e.preventDefault(); const form = e.currentTarget || e.target; const submitBtn = form.querySelector('button[type="submit"], button'); FormUtils.clearFieldErrors(form); FormUtils.setLoading(submitBtn, true); const fd=new FormData(form);
-    const payload={ brand: fd.get('brand'), type: fd.get('type'), installments_min: parseInt(fd.get('installments_min')||'1',10), installments_max: parseInt(fd.get('installments_max')||'1',10), fee_percent: parseFloat(fd.get('fee_percent')||'0'), settlement_days: parseInt(fd.get('settlement_days')||'30',10) };
+    // normalize numeric fields (accept comma as decimal separator)
+    const rawFee = (fd.get('fee_percent')||'0').toString().replace(',','.');
+    const installmentsMin = parseInt((fd.get('installments_min')||'1').toString().replace(',','.'),10);
+    const installmentsMax = parseInt((fd.get('installments_max')||'1').toString().replace(',','.'),10);
+    const settlementDays = parseInt((fd.get('settlement_days')||'30').toString().replace(',','.'),10);
+    const feePercent = parseFloat(rawFee);
+    const payload={ brand: fd.get('brand'), type: fd.get('type'), installments_min: installmentsMin, installments_max: installmentsMax, fee_percent: feePercent, settlement_days: settlementDays };
     try{ await Http.fetchJson('/api/payment/card-fees/', { method:'POST', body: JSON.stringify(payload)}); Http.toast('Taxa criada','success'); if(form && typeof form.reset === 'function') form.reset(); newFeeWrap.classList.add('hidden'); load(); }
     catch(err){ if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message||'Erro ao criar taxa','error'); }
     finally{ FormUtils.setLoading(submitBtn, false); }
@@ -99,11 +115,22 @@
     const params = new URLSearchParams(); params.set('page', scf.page);
     if(scf.brand) params.set('brand', scf.brand);
     try{
+      // ensure brands cache is populated before rendering fees (avoid showing IDs)
+      if(!window._cardBrandsCache || Object.keys(window._cardBrandsCache).length===0){
+        try{ await loadBrands(); }catch(e){}
+      }
       const data = await Http.fetchJson(`/api/payment/card-fees/?${params}`);
       rows.innerHTML=''; (data.results||[]).forEach(f=>{
+        // f.brand can be an id (string) or an object {id,name}; resolve to name
+        let brandName = '';
+        try{
+          if(f && f.brand_detail && typeof f.brand_detail === 'object'){ brandName = f.brand_detail.name || f.brand_detail.id || ''; }
+          else if(f && typeof f.brand === 'object' && f.brand !== null){ brandName = f.brand.name || f.brand.id || ''; }
+          else { brandName = (window._cardBrandsCache && window._cardBrandsCache[f.brand]) || f.brand || ''; }
+        }catch(e){ brandName = f.brand || ''; }
         const tr = document.createElement('tr'); tr.innerHTML = `
-          <td class="px-3 py-2">${f.brand||''}</td>
-          <td class="px-3 py-2">${f.type||''}</td>
+          <td class="px-3 py-2">${brandName}</td>
+          <td class="px-3 py-2">${feeTypeNames[f.type] || f.type || ''}</td>
           <td class="px-3 py-2">${f.installments_min||''}-${f.installments_max||''}</td>
           <td class="px-3 py-2">${f.fee_percent ?? ''}</td>
           <td class="px-3 py-2"><button class="text-sky-400 hover:underline" data-view="${f.id}">Visualizar</button></td>`; rows.appendChild(tr);
@@ -111,14 +138,20 @@
       rows.querySelectorAll('[data-view]').forEach(btn=> btn.addEventListener('click', ()=> viewFee(btn.dataset.view)));
       scf.next=data.next; scf.previous=data.previous; pageInfo.textContent = `Página ${scf.page}`;
     }catch(err){ Http.toast(err.message||'Erro ao carregar taxas','error'); }
-  } load();
+   } load();
 
   const detailWrapFee = document.createElement('div'); detailWrapFee.className='mt-4'; rows.parentElement.parentElement.after(detailWrapFee);
   async function viewFee(id){
     try{
       const f = await Http.fetchJson(`/api/payment/card-fees/${id}/`);
+      // resolve brand name (handle case where API returns brand object or id)
+      let brandName = '';
+      if(f && f.brand_detail && typeof f.brand_detail === 'object'){ brandName = f.brand_detail.name || f.brand_detail.id || ''; }
+      else if(f && typeof f.brand === 'object' && f.brand !== null){ brandName = f.brand.name || f.brand.id || ''; }
+      else { brandName = (window._cardBrandsCache && window._cardBrandsCache[f.brand]) || f.brand || ''; }
+      const typeName = feeTypeNames[f.type] || f.type || '';
       // Ensure brands select populated
-      try{ const bdata = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); const arr=bdata.results||bdata||[]; feeBrand.innerHTML = arr.map(b=>`<option value="${b.id}" ${String(b.id)===String(f.brand)?'selected':''}>${b.name}</option>`).join(''); }catch(e){}
+      try{ const bdata = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); const arr=bdata.results||bdata||[]; feeBrand.innerHTML = arr.map(b=>`<option value="${b.id}" ${String(b.id)===String(f.brand)?'selected':''}>${b.name}</option>`).join(''); window._cardBrandsCache = window._cardBrandsCache || {}; arr.forEach(b=> { window._cardBrandsCache[b.id] = b.name; }); }catch(e){}
       detailWrapFee.innerHTML = `
         <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
           <div class="flex items-center justify-between mb-3">
@@ -130,8 +163,8 @@
             </div>
           </div>
           <div id="feeView" class="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <div class="text-sm">Bandeira: <span>${f.brand||''}</span></div>
-            <div class="text-sm">Tipo: <span>${f.type||''}</span></div>
+            <div class="text-sm">Bandeira: <span>${brandName}</span></div>
+            <div class="text-sm">Tipo: <span>${typeName}</span></div>
             <div class="text-sm">Parcelas: <span>${f.installments_min||''}-${f.installments_max||''}</span></div>
             <div class="text-sm">Taxa %: <span>${f.fee_percent??''}</span></div>
             <div class="text-sm">D+ Liquidação: <span>${f.settlement_days??''}</span></div>
@@ -141,18 +174,26 @@
             <div><label class="block text-sm mb-1">Tipo</label><select name="type" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"><option value="card_credit" ${f.type==='card_credit'?'selected':''}>Crédito</option><option value="card_debit" ${f.type==='card_debit'?'selected':''}>Débito</option></select></div>
             <div><label class="block text-sm mb-1">Parcelas mín.</label><input name="installments_min" type="number" min="1" value="${f.installments_min||1}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
             <div><label class="block text-sm mb-1">Parcelas máx.</label><input name="installments_max" type="number" min="1" value="${f.installments_max||1}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
-            <div><label class="block text-sm mb-1">Taxa %</label><input name="fee_percent" type="number" step="0.001" value="${f.fee_percent??0}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Taxa %</label><input name="fee_percent" type="number" step="0.01" value="${f.fee_percent??0}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
             <div><label class="block text-sm mb-1">D+ Liquidação</label><input name="settlement_days" type="number" step="1" value="${f.settlement_days??30}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
             <div class="md:col-span-6"><button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Salvar</button></div>
           </form>
         </div>`;
       // Populate brand select for edit
-      try{ const bdata2 = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); const arr2=bdata2.results||bdata2||[]; const sel = detailWrapFee.querySelector('#feeBrandEdit'); sel.innerHTML = arr2.map(b=>`<option value="${b.id}" ${String(b.id)===String(f.brand)?'selected':''}>${b.name}</option>`).join(''); }catch(e){}
+      try{ const bdata2 = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); const arr2=bdata2.results||bdata2||[]; const sel = detailWrapFee.querySelector('#feeBrandEdit'); sel.innerHTML = arr2.map(b=>`<option value="${b.id}" ${String(b.id)===String(f.brand)?'selected':''}>${b.name}</option>`).join(''); window._cardBrandsCache = window._cardBrandsCache || {}; arr2.forEach(b=> { window._cardBrandsCache[b.id] = b.name; }); }catch(e){}
       detailWrapFee.scrollIntoView({behavior:'smooth'});
       document.getElementById('closeFee').onclick = ()=> detailWrapFee.innerHTML='';
       document.getElementById('editFee').onclick = ()=>{ document.getElementById('feeView').classList.add('hidden'); document.getElementById('feeEdit').classList.remove('hidden'); };
-      document.getElementById('delFee').onclick = ()=> UI.confirm(`Excluir taxa (${f.type||''} ${f.installments_min||''}-${f.installments_max||''})?`, async ()=>{ try{ await Http.fetchJson(`/api/payment/card-fees/${id}/`, { method:'DELETE' }); Http.toast('Excluída','success'); detailWrapFee.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } });
-      document.getElementById('feeEdit').onsubmit = async (e)=>{ e.preventDefault(); const fd=new FormData(e.currentTarget); const payload={ brand: fd.get('brand'), type: fd.get('type'), installments_min: parseInt(fd.get('installments_min')||'1',10), installments_max: parseInt(fd.get('installments_max')||'1',10), fee_percent: parseFloat(fd.get('fee_percent')||'0'), settlement_days: parseInt(fd.get('settlement_days')||'30',10) }; try{ await Http.fetchJson(`/api/payment/card-fees/${id}/`, { method:'PATCH', body: JSON.stringify(payload)}); Http.toast('Atualizada','success'); detailWrapFee.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao atualizar','error'); } };
+      document.getElementById('delFee').onclick = ()=> UI.confirm(`Excluir taxa (${typeName} ${f.installments_min||''}-${f.installments_max||''})?`, async ()=>{ try{ await Http.fetchJson(`/api/payment/card-fees/${id}/`, { method:'DELETE' }); Http.toast('Excluída','success'); detailWrapFee.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } });
+      document.getElementById('feeEdit').onsubmit = async (e)=>{ e.preventDefault(); const fd=new FormData(e.currentTarget);
+        // normalize numeric fields (accept comma as decimal separator)
+        const rawFeeE = (fd.get('fee_percent')||'0').toString().replace(',','.');
+        const installmentsMinE = parseInt((fd.get('installments_min')||'1').toString().replace(',','.'),10);
+        const installmentsMaxE = parseInt((fd.get('installments_max')||'1').toString().replace(',','.'),10);
+        const settlementDaysE = parseInt((fd.get('settlement_days')||'30').toString().replace(',','.'),10);
+        const feePercentE = parseFloat(rawFeeE);
+        const payload={ brand: fd.get('brand'), type: fd.get('type'), installments_min: installmentsMinE, installments_max: installmentsMaxE, fee_percent: feePercentE, settlement_days: settlementDaysE };
+        try{ await Http.fetchJson(`/api/payment/card-fees/${id}/`, { method:'PATCH', body: JSON.stringify(payload)}); Http.toast('Atualizada','success'); detailWrapFee.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao atualizar','error'); } };
     }catch(err){ Http.toast(err.message||'Erro ao carregar detalhe','error'); }
   }
 </script>

@@ -92,26 +92,26 @@
     catch(err){ if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message||'Erro ao criar forma','error'); }
     finally{ FormUtils.setLoading(submitBtn, false); }
   });
-  apply.addEventListener('click', ()=>{ spm.page=1; spm.q=q.value; spm.ordering=ordering.value; load(); });
-  prev.addEventListener('click', ()=>{ if(spm.previous){ spm.page--; load(); }});
-  next.addEventListener('click', ()=>{ if(spm.next){ spm.page++; load(); }});
+  if(apply){ apply.addEventListener('click', ()=>{ spm.page=1; spm.q = q ? q.value : ''; spm.ordering = ordering ? ordering.value : 'name'; load(); }); }
+  if(prev){ prev.addEventListener('click', ()=>{ if(spm.previous){ spm.page--; load(); }}); }
+  if(next){ next.addEventListener('click', ()=>{ if(spm.next){ spm.page++; load(); }}); }
   async function load(){
     const params = new URLSearchParams(); params.set('page', spm.page);
     if(spm.q) params.set('search', spm.q); if(spm.ordering) params.set('ordering', spm.ordering);
     try{
       const data = await Http.fetchJson(`/api/payment/methods/?${params}`);
-      rows.innerHTML=''; (data.results||[]).forEach(m=>{
-        const tr = document.createElement('tr'); tr.innerHTML = `
-          <td class="px-3 py-2">${m.code||''}</td>
-          <td class="px-3 py-2">${m.name}</td>
-          <td class="px-3 py-2">${m.type||''}</td>
-          <td class="px-3 py-2">${m.fee_percent ?? ''}</td>
-          <td class="px-3 py-2"><button class="text-sky-400 hover:underline" data-view="${m.uuid}">Visualizar</button></td>`; rows.appendChild(tr);
-      });
-      rows.querySelectorAll('[data-view]').forEach(btn=> btn.addEventListener('click', ()=> viewMethod(btn.dataset.view)));
-      spm.next=data.next; spm.previous=data.previous; pageInfo.textContent = `Página ${spm.page}`;
-    }catch(err){ Http.toast(err.message||'Erro ao carregar métodos','error'); }
-  } load();
+       rows.innerHTML=''; (data.results||[]).forEach(m=>{
+         const tr = document.createElement('tr'); tr.innerHTML = `
+           <td class="px-3 py-2">${m.code||''}</td>
+           <td class="px-3 py-2">${m.name}</td>
+           <td class="px-3 py-2">${m.type||''}</td>
+           <td class="px-3 py-2">${m.fee_percent ?? ''}</td>
+           <td class="px-3 py-2"><button class="text-sky-400 hover:underline" data-view="${m.uuid}">Visualizar</button></td>`; rows.appendChild(tr);
+       });
+       rows.querySelectorAll('[data-view]').forEach(btn=> btn.addEventListener('click', ()=> viewMethod(btn.dataset.view)));
+       spm.next=data.next; spm.previous=data.previous; pageInfo.textContent = `Página ${spm.page}`;
+     }catch(err){ Http.toast(err.message||'Erro ao carregar métodos','error'); }
+   } load();
 
   // Painel de detalhe / editar / deletar
   const detailWrapPm = document.createElement('div');

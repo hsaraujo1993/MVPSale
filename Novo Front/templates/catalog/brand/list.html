@@ -20,20 +20,27 @@
 </div>
 
 <!-- 🔍 Filtros -->
-<div class="flex flex-wrap items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 mb-4 backdrop-blur-sm">
-  <label for="brand-q" class="sr-only">Buscar marcas</label>
-  <input id="brand-q" placeholder="Buscar marcas..."
-         class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none min-w-[200px]" />
-  <label for="brand-ordering" class="sr-only">Ordenar por</label>
-  <select id="brand-ordering"
-          class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none">
-    <option value="name">Nome</option>
-    <option value="-created_at">Mais recentes</option>
-  </select>
-  <button id="brand-apply" class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">
-    <i data-lucide="filter" class="w-4 h-4"></i>
-    Aplicar
-  </button>
+<div class="flex flex-wrap items-center justify-between mb-4">
+  <div class="flex flex-wrap gap-2 items-center bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 backdrop-blur-sm">
+    <label for="brand-q" class="sr-only">Buscar marcas</label>
+    <input id="brand-q" placeholder="Buscar marcas..."
+           class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none min-w-[200px]" />
+    <label for="brand-ordering" class="sr-only">Ordenar por</label>
+    <select id="brand-ordering"
+            class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none">
+      <option value="name">Nome</option>
+      <option value="-created_at">Mais recentes</option>
+    </select>
+    <button id="brand-apply" class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">
+      <i data-lucide="filter" class="w-4 h-4"></i>
+      Aplicar
+    </button>
+  </div>
+
+  <a href="#" id="brand-toggle-new" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    Nova Marca
+  </a>
 </div>
 
 <!-- 📋 Lista -->
@@ -78,6 +85,8 @@ if (!window.__brandInit) {
   toggleNewBrand?.addEventListener('click', (e)=>{
     e.preventDefault();
     newBrandWrap?.classList.toggle('hidden');
+    // focus the name input when the form is shown
+    try { if (!newBrandWrap.classList.contains('hidden')) { setTimeout(()=>{ document.getElementById('brand-name')?.focus(); }, 50); } } catch(e){}
   });
 
   document.getElementById('brand-new-form')?.addEventListener('submit', async (e)=>{
@@ -117,14 +126,18 @@ if (!window.__brandInit) {
         tr.innerHTML = `
           <td class="px-3 py-2 font-medium">${b.name}</td>
           <td class="px-3 py-2">${b.active ? '<span class="text-emerald-400 font-medium">Sim</span>' : '<span class="text-slate-500">Não</span>'}</td>
-          <td class="px-3 py-2">
+          <td class="px-3 py-2 space-x-3">
             <button class="text-sky-400 hover:underline" data-view="${b.uuid}">Visualizar</button>
+            <button class="text-rose-400 hover:underline" data-del="${b.uuid}" data-name="${b.name}">Excluir</button>
           </td>`;
         rowsBrand.appendChild(tr);
       });
       rowsBrand.querySelectorAll('[data-view]').forEach(btn=>
         btn.addEventListener('click', ()=> viewBrand(btn.dataset.view))
       );
+      rowsBrand.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.addEventListener('click', ()=> delBrand(btn.dataset.del, btn.dataset.name));
+      });
       sb.next=data.next; sb.previous=data.previous;
       pageInfoBrand.textContent = `Página ${sb.page}`;
     } catch(err){
@@ -136,6 +149,17 @@ if (!window.__brandInit) {
   const detailWrap = document.createElement('div');
   detailWrap.className = 'mt-6';
   rowsBrand.parentElement.parentElement.after(detailWrap);
+
+  // Deletar marca diretamente da listagem
+  async function delBrand(uuid, name){
+    UI.confirm(`Excluir marca "${name||''}"?`, async ()=>{
+      try {
+        await Http.fetchJson(`/api/catalog/brands/${uuid}/`, { method:'DELETE' });
+        Http.toast('Marca excluída','success');
+        loadBrand();
+      } catch(err){ Http.toast(err.message||'Erro ao excluir','error'); }
+    }, 'Excluir', 'danger');
+  }
 
   async function viewBrand(uuid){
     try {

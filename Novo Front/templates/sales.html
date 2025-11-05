@@ -1,14 +1,24 @@
 ﻿{% extends "base.html" %}
-{% block title %}PDV â€” MVPSale{% endblock %}
+{% block title %}PDV · MVPSale{% endblock %}
 {% block content %}
 {% include "partials/breadcrumb.html" with b1="Vendas" b2="PDV" %}
 <h1 class="text-2xl font-semibold mb-4">PDV</h1>
 
 <div x-data="pos()" x-init="init()" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-3 mb-2">
+    <div class="flex flex-wrap gap-2 text-xs">
+      <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700">Tipo: <span x-text="orderType==='orcamento' ? 'Orçamento' : 'Pedido'"></span></span>
+      <span class="px-2 py-1 rounded" :class="(orderStatus||'')==='CONFIRMED' ? 'bg-emerald-900 text-emerald-200' : 'bg-slate-800 text-slate-300'">Status: <span x-text="orderStatus||'DRAFT'"></span></span>
+      <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700">Cliente: <span x-text="(customers.find(c=>c.uuid===customer)?.name)||'-'"></span></span>
+      <template x-if="payment_method">
+        <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700">Pagamento: <span x-text="paymentSummary()"></span></span>
+      </template>
+    </div>
+  </div>
   <div class="lg:col-span-2 space-y-4">
     <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
       <div class="flex gap-2 items-center">
-        <input x-model="search" @keyup.enter="loadProducts()" placeholder="Buscar produto (nome, cÃ³digo, cÃ³digo de barras)" class="flex-1 px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+        <input x-model="search" @keyup.enter="loadProducts()" placeholder="Buscar produto (nome, código, código de barras)" class="flex-1 px-3 py-2 rounded bg-slate-900 border border-slate-700" />
         <button @click="loadProducts()" class="px-3 py-2 rounded bg-slate-700">Buscar</button>
       </div>
       <div class="mt-3 max-h-56 overflow-auto">
@@ -27,10 +37,10 @@
                 <td class="px-3 py-2" x-text="formatQty(productStock[p.uuid])"></td>
                 <td class="px-3 py-2">
                   <template x-if="((productStock[p.uuid] ?? null) === null || parseFloat(productStock[p.uuid]||0) > 0) && parseFloat(p.sale_price||0) > 0">
-                    <button @click="addItem(p)" :disabled="loadingProducts" :class="{ 'opacity-50 pointer-events-none': loadingProducts }" class="text-emerald-400 hover:underline">Adicionar</button>
+                    <button @click="addItem(p)" class="text-emerald-400 hover:underline">Adicionar</button>
                   </template>
                   <template x-if="((productStock[p.uuid] ?? null) === null || parseFloat(productStock[p.uuid]||0) > 0) && !(parseFloat(p.sale_price||0) > 0)">
-                    <button @click="Http.toast('Defina o preço em Catálogo > Produto.', 'error'); window.open('/catalog?tab=products','_blank');" class="text-slate-400 hover:underline" title="Defina o preço em Catálogo > Produto">Sem preço</button>
+                    <button @click="Http.toast('Defina o preço em Catálogo > Produto.', 'error'); window.open('/catalog?tab=products','_blank');" class="text-slate-400 hover:underline">Sem preço</button>
                   </template>
                   <template x-if="(productStock[p.uuid] ?? null) !== null && parseFloat(productStock[p.uuid]||0) <= 0">
                     <span class="text-rose-400 text-xs">Sem estoque</span>
@@ -40,9 +50,6 @@
             </template>
           </tbody>
         </table>
-        <template x-if="!products.length">
-          <div class="text-xs text-slate-400 px-3 py-2">Digite ao menos 2 caracteres e pressione Enter para buscar.</div>
-        </template>
       </div>
     </div>
 
@@ -58,7 +65,7 @@
           <th></th>
         </tr></thead>
         <tbody>
-          <template x-for="(it, idx) in items" :key="it.product">
+          <template x-for="(it, idx) in items" :key="it.uuid || it.product">
             <tr>
               <td class="px-3 py-2" x-text="it.name"></td>
               <td class="px-3 py-2">
@@ -94,14 +101,14 @@
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <label class="block text-sm mb-1">Desconto geral (%)</label>
-          <input x-model.number="orderDiscount" @change="applyOrderDiscount()" @input="applyOrderDiscount()" type="number" min="0" max="100" step="0.01" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" placeholder="0,00" />
-          <button @click="applyOrderDiscount()" class="mt-1 text-xs text-emerald-400 hover:underline">Aplicar desconto no total (%)</button>
-            <div class="mt-3">
-            <label class="block text-sm mb-1">Desconto geral (valor)</label>
+          <div>
+            <label class="block text-sm mb-1">Desconto geral (%)</label>
+            <input x-model.number="orderDiscount" @change="applyOrderDiscount()" @input="applyOrderDiscount()" type="number" min="0" max="100" step="0.01" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" placeholder="0,00" />
+          </div>
+          <div class="mt-3">
+            <label class="block text-sm mb-1">Desconto (valor)</label>
             <input x-model.number="orderDiscountAbs" @change="applyOrderDiscountAbs()" type="number" min="0" step="1" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" placeholder="0" />
-            <button @click="applyOrderDiscountAbs()" class="mt-1 text-xs text-emerald-400 hover:underline">Aplicar desconto (valor) no total</button>
-            </div>
+          </div>
         </div>
         <div>
           <label class="block text-sm mb-1">Forma de pagamento</label>
@@ -114,7 +121,12 @@
               <template x-for="pm in paymentMethods" :key="pm.uuid"><option :value="pm.uuid" x-text="pm.name"></option></template>
             </select>
           </div>
-          <!-- Parcelamento (somente UI) para cartão de crédito -->
+          <div x-show="payment_method" class="mt-2 text-xs text-slate-300">
+            <span class="font-medium">Resumo:</span> <span x-text="paymentSummary()"></span>
+          </div>
+          <div x-show="orderType==='orcamento' && !payment_method" class="mt-2 text-xs rounded border border-amber-600/40 bg-amber-900/30 text-amber-200 px-3 py-2">
+            Dica: este orçamento ainda não possui forma de pagamento. Selecione uma forma (e, se cartão, a bandeira e as parcelas) para agilizar a confirmação posterior.
+          </div>
           <div class="mt-2 space-y-2" x-show="isCardCredit()">
             <div>
               <label class="block text-sm mb-1">Bandeira</label>
@@ -128,474 +140,364 @@
               <select x-model.number="installments" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
                 <template x-for="n in availableInstallments()" :key="'parc-'+n"><option :value="n" x-text="installmentLabel(n)"></option></template>
               </select>
+            </div>            <div x-show="!cardBrand || !(parseInt(installments||0,10)>0)" class="text-xs rounded border border-amber-600/40 bg-amber-900/30 text-amber-200 px-3 py-2">
+              Selecione a bandeira e as parcelas para confirmar com cartão de crédito.
             </div>
-            <div class="text-xs text-slate-400">Somente interface: parcelas não afetam o backend neste momento.</div>
           </div>
         </div>
       </div>
-      <div class="space-y-1">
+
+      <div class="mt-3">
+        <label class="block text-sm mb-1">Tipo</label>
+        <div class="inline-flex rounded-lg overflow-hidden border border-slate-700">
+          <button type="button" @click="orderType='pedido'" :class="orderType==='pedido' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'" class="px-3 py-1.5">Pedido</button>
+          <button type="button" @click="orderType='orcamento'" :class="orderType==='orcamento' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'" class="px-3 py-1.5 border-l border-slate-700">Orçamento</button>
+        </div>
+      </div>
+
+      <div class="space-y-1 mt-3">
         <div class="text-sm">Subtotal: <span x-text="formatMoney(itemsSubtotal())"></span></div>
-        <template x-if="feePercent() > 0">
-          <div class="text-xs text-slate-400 space-y-1">
-            <div>
-              <span class="font-medium">Desconto aplicado:</span>
-              <span x-text="formatMoney(discountApplied())"></span>
-            </div>
-            <div>
-              <span class="font-medium">Taxa Cartão:</span>
-              <span x-text="feePercent().toFixed(2) + '%'">0%</span>
-              <span x-text="' • ' + (installments || 1) + 'x'"></span>
-            </div>
-            <div>
-              <span class="font-medium">Valor juros:</span>
-              <span x-text="formatMoney(feeValue())"></span>
-            </div>
-          </div>
-        </template>
-        <div class="text-lg flex items-center gap-3">
-          <div>Valor total: <span x-text="formatMoney(total())"></span></div>
-          <div x-show="parseFloat(orderDiscountAbs||0) > 0" class="inline-flex items-center gap-2 bg-rose-700 text-white text-sm px-2 py-1 rounded">
-            <span class="font-medium">Desconto do pedido:</span>
-            <span x-text="formatMoney(orderDiscountAbs)"></span>
-          </div>
-        </div>
+        <div class="text-xs text-slate-400"><span class="font-medium">Desconto aplicado:</span> <span x-text="formatMoney(discountApplied())"></span></div>
+        <div class="text-xs text-slate-400"><span class="font-medium">Taxa/Juros:</span> <span x-text="feeDisplay()"></span></div>
+        <div class=\"text-lg flex items-center gap-2\"><span>Total:</span><span x-text="formatMoney(total())"></span></div>
       </div>
-      <div class="mt-2">
-        <label class="block text-sm mb-1">Tipo de pedido</label>
-        <div class="flex gap-2">
-          <button @click="setOrderType('carrinho')" :class="orderType==='carrinho' ? 'bg-slate-700 text-white' : 'bg-slate-900 text-slate-300'" class="px-3 py-2 rounded border border-slate-700">Carrinho</button>
-          <button @click="setOrderType('orcamento')" :class="orderType==='orcamento' ? 'bg-slate-700 text-white' : 'bg-slate-900 text-slate-300'" class="px-3 py-2 rounded border border-slate-700">Orçamento</button>
-        </div>
-      </div>
+
       <div class="flex flex-wrap gap-2 items-center">
-        <button @click="finalize()" :disabled="!canFinalize()" :aria-disabled="!canFinalize()" :title="finalizeDisabledReason()" :class="{ 'opacity-50 pointer-events-none': !canFinalize() }" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded px-3 py-2">Finalizar</button>
+        <template x-if="canFinalize()">
+          <button @click="finalize()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded px-3 py-2" x-text="orderType==='orcamento' ? 'Finalizar Orçamento' : 'Finalizar pedido'"></button>
+        </template>
+        <template x-if="!canFinalize()">
+          <button type="button" class="flex-1 bg-emerald-700/40 text-emerald-200 rounded px-3 py-2 border border-emerald-800 cursor-not-allowed" aria-disabled="true" title="Adicione itens, selecione cliente e pagamento" x-text="orderType==='orcamento' ? 'Finalizar Orçamento' : 'Finalizar pedido'"></button>
+        </template>
         <button @click="resetOrder()" class="px-3 py-2 rounded bg-slate-700">Cancelar</button>
         <template x-if="orderId && (orderStatus||'DRAFT')==='DRAFT'"><button @click="deleteOrder()" class="px-3 py-2 rounded bg-rose-700 hover:bg-rose-600 text-white">Excluir venda</button></template>
       </div>
-      <template x-if="salesOrder && String(salesOrder).length">
-        <div class="flex flex-wrap items-center gap-3">
-          <div :class="(orderStatus||'DRAFT')==='CONFIRMED' ? 'text-emerald-300 bg-emerald-900/30 border border-emerald-700 rounded px-2 py-1' : 'text-slate-400'" class="flex items-center gap-2">
-            <span class="font-medium">Pedido:</span>
-            <span :class="(orderStatus||'DRAFT')==='CONFIRMED' ? 'text-lg font-semibold' : ''" x-text="salesOrder"></span>
-            <span x-show="(orderStatus||'DRAFT')==='CONFIRMED'" aria-hidden="true" class="text-emerald-400">✓</span>
-          </div>
-          <button @click="copySalesOrder()" class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-xs hover:bg-slate-700" title="Copiar número do pedido">📋 Copiar</button>
-          <span class="inline-block px-2 py-0.5 rounded-full bg-slate-700 text-slate-200" x-text="orderTypeLabel()"></span>
-          <span class="inline-block px-2 py-0.5 rounded-full" :class="(orderStatus||'DRAFT')==='CONFIRMED' ? 'bg-emerald-700 text-white' : 'bg-slate-700 text-slate-200'" x-text="(orderStatus||'DRAFT')==='CONFIRMED' ? 'Confirmado' : 'Rascunho'"></span>
-        </div>
-      </template>
-      <template x-if="confirmedOrderId">
-        <div class="flex gap-2 items-center mt-2">
-          <button @click="emitNFe()" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Emitir NF-e</button>
-          <template x-if="lastInvoice && lastInvoice.uuid"><a :href="'/nfe?tab=list'" class="text-xs text-slate-400 hover:underline">Ver NF-e</a></template>
-        </div>
-      </template>
     </div>
   </div>
-</div>
+<!-- Modal de Confirmação do Pedido (inline no escopo do PDV) -->
+<div x-show="showOrderConfirm" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+  <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-3xl w-full mx-4 shadow-xl overflow-hidden" @click.stop>
+    <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-800/40">
+      <h3 class="text-lg font-semibold">Pedido finalizado com sucesso</h3>
+      <button class="text-slate-400 hover:text-slate-200" @click="showOrderConfirm=false">✕</button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div class="space-y-1">
+          <div class="flex items-center justify-between"><span class="text-slate-400">Pedido</span><span class="font-medium" x-text="(confirmedOrderData && (confirmedOrderData.sales_order||confirmedOrderData.uuid)) || salesOrder || orderId"></span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-400">Status</span><span class="px-2 py-0.5 rounded text-xs" :class="(orderStatus||'')==='CONFIRMED' ? 'bg-emerald-900 text-emerald-200' : 'bg-slate-800 text-slate-300'" x-text="orderStatus"></span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-400">Cliente</span><span class="font-medium" x-text="(customers.find(c=>c.uuid===customer)?.name)||'-'"></span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-400">Vendedor</span><span class="font-medium" x-text="(sellers.find(s=>s.uuid===seller)?.name)||'-'"></span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-400">Criado em</span><span x-text="new Date().toLocaleString()"></span></div>
+        </div>
+        <div class="space-y-1">
+          <div class="flex items-center justify-between"><span class="text-slate-400">Subtotal</span><span class="font-medium" x-text="formatMoney(itemsSubtotal())"></span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-400">Descontos</span><span x-text="formatMoney(discountApplied())"></span></div>
+          <div class="flex items-center justify-between"><span class="text-slate-400">Total</span><span class="text-lg font-semibold" x-text="formatMoney(total())"></span></div>
+        </div>
+      </div>
+      <div class="mt-3">
+        <div class="text-slate-300 text-sm mb-2">Próximos passos</div>
+        <div class="flex flex-wrap gap-2">
+          <a href="/nfe" target="_blank" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Faturar</a>
+          <button class="px-3 py-2 rounded bg-amber-600 hover:bg-amber-500 text-black" @click="(async()=>{ try{ await Http.fetchJson(`/api/sale/orders/${orderId}/action/`, { method:'POST', body: JSON.stringify({ action:'cancel' })}); Http.toast('Pedido cancelado','success'); showOrderConfirm=false; }catch(e){ Http.toast(e.message||'Erro ao cancelar','error'); } })()">Cancelar pedido</button>
+          <a href="/orders" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white">Ver pedidos</a>
+          <button class="px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" @click="resetOrder(); showOrderConfirm=false;">Nova venda</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
 
 <script>
   function pos(){
-      return {
+    return {
       search: '', products: [], items: [], customers: [], sellers: [], orderId: null, customer: '', seller: '',
       paymentMethods: [], payment_method: '', showPaymentSelect: false, confirmedOrderId: '', lastInvoice: null,
       cardBrands: [], cardFees: [], cardBrand: '', installments: 1,
       orderDiscount: 0, orderDiscountAbs: 0,
       productNameCache: {}, productStock: {},
-      installments: 1,
-      orderType: 'carrinho',
+      orderType: 'pedido',
       orderStatus: 'DRAFT',
       salesOrder: '',
-      isCardCredit(){
-        const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method);
-        if (!pm) return false;
-        const t = (pm.type||'').toLowerCase();
-        const name = (pm.name||'').toLowerCase();
-        return t === 'card_credit' || name.includes('crédito') || name.includes('credito');
-      },
-      canFinalize(){
-        if (!Array.isArray(this.items) || this.items.length === 0) return false;
-        for (const it of this.items) {
-          const q = parseFloat(it?.quantity ?? 0);
-          const price = parseFloat(it?.unit_price ?? 0);
-          if (!(q > 0) || !(price > 0)) return false;
-          const st = this.productStock[it.product];
-          if (st !== undefined && st !== null) {
-            const stn = parseFloat(st);
-            if (!isNaN(stn) && q > stn) return false;
-          }
-        }
-        // Requer selecionar cliente e forma de pagamento
-        if (!this.customer) return false;
-        if (!this.payment_method) return false;
-        return true;
-      },
-      finalizeDisabledReason(){
-        if (!Array.isArray(this.items) || this.items.length === 0) return 'Adicione ao menos um item';
-        for (const it of this.items) {
-          const q = parseFloat(it?.quantity ?? 0);
-          const price = parseFloat(it?.unit_price ?? 0);
-          if (!(q > 0) || !(price > 0)) return 'Itens com quantidade/preço inválidos';
-          const st = this.productStock[it.product];
-          if (st !== undefined && st !== null) {
-            const stn = parseFloat(st);
-            if (!isNaN(stn) && q > stn) return 'Ajuste as quantidades ao estoque disponível';
-          }
-        }
-        if (!this.customer) return 'Defina o cliente';
-        if (!this.payment_method) return 'Defina a forma de pagamento';
-        return '';
-      },
+      showOrderConfirm: false,
+      confirmedOrderData: null,
+      isCardCredit(){ const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method); if(!pm) return false; const t=(pm.type||'').toLowerCase(); const n=(pm.name||'').toLowerCase(); return t==='card_credit' || n.includes('crédito') || n.includes('credito'); },
       formatMoney(v){ try { return 'R$ ' + (parseFloat(v)||0).toFixed(2); } catch(e) { return 'R$ 0,00'; } },
       formatQty(v){ const n = parseFloat(v); if (isNaN(n)) return '-'; return Math.round(n).toString(); },
       async init(){
-        // NÃ£o carregar todos os produtos por padrÃ£o para evitar lentidÃ£o
+        // Carregar listas base primeiro
+        let oid = '';
+        try { const qs = new URLSearchParams(window.location.search); oid = qs.get('order')||''; } catch(e){}
         try { const cs = await Http.fetchJson('/api/people/customers/?ordering=name'); this.customers = cs.results||cs||[]; } catch(e){}
         try { const ss = await Http.fetchJson('/api/people/sellers/?ordering=name'); this.sellers = ss.results||ss||[]; } catch(e){}
-        // Preencher vendedor automaticamente conforme login
         try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e){}
-        // Carregar formas de pagamento
         try { const pms = await Http.fetchJson('/api/payment/methods/?ordering=name'); this.paymentMethods = pms.results||pms||[]; } catch(e){}
-        // Carregar bandeiras e tiers de parcelas (cartão de crédito)
         try { const brands = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); this.cardBrands = brands.results||brands||[]; } catch(e){}
         try { const fees = await Http.fetchJson('/api/payment/card-fees/?type=card_credit'); this.cardFees = fees.results||fees||[]; } catch(e){}
+        // Se vindo de um link de edição (ex.: /sales?order=<uuid>), carregar o pedido existente
+        if (oid) { await this.loadExistingOrder(oid); }
+      },
+      async loadExistingOrder(id){
+        try {
+          const o = await Http.fetchJson(`/api/sale/orders/${id}/`);
+          if (!o || !o.uuid) return;
+          this.orderId = o.uuid;
+          this.orderStatus = o.status || 'DRAFT';
+          // Mapear tipos backend -> UI
+          const ot = String(o.order_type||'').toLowerCase();
+          this.orderType = (ot === 'orcamento') ? 'orcamento' : 'pedido';
+          // Atribuir entidades
+          this.customer = o.customer || '';
+          this.seller = o.seller || this.seller || '';
+          this.payment_method = o.payment_method || '';
+          // Payment metadata -> UI
+          const pm = o.payment_metadata || {};
+          try { if (pm.installments != null) this.installments = parseInt(pm.installments, 10) || 1; } catch(e){}
+          try { if (pm.card_brand != null) this.cardBrand = String(pm.card_brand); } catch(e){}
+          if (this.orderType==='orcamento' && !this.payment_method) {
+            try { Http.toast('Orçamento sem forma de pagamento. Selecione uma antes de confirmar.','info'); } catch(e){}
+            this.showPaymentSelect = true;
+          }
+          // Itens
+          const items = Array.isArray(o.items) ? o.items : [];
+          this.items = items.map(it => ({
+            uuid: it.uuid || null,
+            product: it.product,
+            name: this.productNameCache[it.product] || ('#'+String(it.product||'').slice(0,8)),
+            quantity: parseFloat(it.quantity||0) || 0,
+            unit_price: parseFloat(it.unit_price||0) || 0,
+            discount_percent: parseFloat(it.discount_percent||0) || 0,
+            warn: ''
+          }));
+          // Pré-carregar nomes e estoque
+          for (const it of this.items){
+            try {
+              if (!this.productNameCache[it.product]){
+                const p = await Http.fetchJson(`/api/catalog/products/${it.product}/`);
+                this.productNameCache[it.product] = p?.name || this.productNameCache[it.product] || it.name;
+                it.name = this.productNameCache[it.product];
+              }
+            } catch(e){}
+            try { await this.fetchStock(it.product); } catch(e){}
+          }
+        } catch(e){ Http.toast(e.message||'Erro ao carregar orçamento','error'); }
       },
       async loadProducts(){
         const p = new URLSearchParams(); if (this.search && this.search.trim().length >= 2) p.set('search', this.search.trim()); else { this.products=[]; return; } p.set('ordering','name');
-        try {
-          const data = await Http.fetchJson(`/api/catalog/products/?${p.toString()}`);
-          this.products = (data && (data.results||data)) || [];
-          // Cache nomes para exibiÃ§Ã£o de itens carregados do pedido
-          (this.products||[]).forEach(pr=>{ if (pr && pr.uuid) this.productNameCache[pr.uuid] = pr.name; });
-          // Buscar estoque dos produtos listados (cache por uuid)
-          for (const pr of (this.products||[])) { if (pr && pr.uuid && this.productStock[pr.uuid] === undefined) { this.fetchStock(pr.uuid); } }
-        } catch(e){ Http.toast(e.message||'Erro ao carregar produtos','error'); }
+        try { const data = await Http.fetchJson(`/api/catalog/products/?${p.toString()}`); this.products = (data && (data.results||data)) || []; (this.products||[]).forEach(pr=>{ if (pr && pr.uuid) this.productNameCache[pr.uuid] = pr.name; }); await Promise.all((this.products||[]).map(pr => pr && pr.uuid ? this.fetchStock(pr.uuid) : Promise.resolve())); } catch(e){ Http.toast(e.message||'Erro ao carregar produtos','error'); }
       },
-      async loadOrderItems(){
-        if (!this.orderId) return;
-        try {
-          const arr = await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/`);
-          this.items = (arr||[]).map(it=>({
-            uuid: it.uuid,
-            product: it.product,
-            name: this.productNameCache[it.product] || ('#'+it.product),
-            quantity: parseFloat(it.quantity||0),
-            unit_price: parseFloat(it.unit_price||0),
-            discount_percent: parseFloat(it.discount_percent||0),
-            warn: ''
-          }));
-          // Resolver nomes de produtos ausentes no cache
-          for (const it of this.items) { if (!this.productNameCache[it.product]) { this.fetchProductName(it.product).then(nm=>{ it.name = nm; }); } }
-        } catch(e){ /* silencioso */ }
-      },
-      async fetchProductName(uuid){
-        try { const pr = await Http.fetchJson(`/api/catalog/products/${uuid}/`); if (pr && pr.name) { this.productNameCache[uuid] = pr.name; return pr.name; } } catch(e){}
-        return '#'+uuid;
-      },
-      async fetchStock(uuid){
-        try { const st = await Http.fetchJson(`/api/stock/?product__uuid=${uuid}`); const rows = st.results||st||[]; const q = (rows[0] && rows[0].quantity_current) || 0; this.$nextTick(()=>{ this.productStock[uuid] = q; }); } catch(e){ this.productStock[uuid] = null; }
-      },
-      async ensureOrder(){
-        if (this.orderId) return;
-        try {
-          // garantir vendedor
-          if (!this.seller) {
-            try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e) {}
-          }
-          if (!this.seller) { throw new Error('Defina um vendedor antes de criar o pedido.'); }
-          // Build payment metadata to persist method details (name/type/fees/installments)
-          let payment_meta = null;
-          try {
-            const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method);
-            if (pm) {
-              // Prefer per-installment fee (computed) when card credit is selected
-              const computedFee = this.isCardCredit() ? this.feePercent() : (pm.fee_percent||0);
-              // Absolute fee value computed from the base (feeValue()) - format to 2 decimals
-              const computedFeeValue = parseFloat((this.feeValue() || 0).toFixed(2));
-              payment_meta = { uuid: pm.uuid, name: pm.name, type: pm.type, fee_percent: parseFloat(computedFee||0), fee_value: computedFeeValue };
-              if (this.isCardCredit()) { payment_meta.installments = this.installments || 1; payment_meta.card_brand = this.cardBrand || null; }
-            }
-          } catch(e){}
-          const o = await Http.fetchJson('/api/sale/orders/', { method:'POST', body: JSON.stringify({ customer: this.customer||null, seller: this.seller||null, payment_method: this.payment_method||null, order_type: this.orderType, order_discount_abs: parseFloat(this.orderDiscountAbs||0), payment_metadata: payment_meta })});
-          if (!o || !o.uuid) { throw new Error('Falha ao criar pedido.'); }
-          this.orderId = o.uuid;
-          this.orderStatus = o.status || 'DRAFT';
-          // Nota: não carregamos items do servidor aqui para evitar sobrescrever o estado local (itens no carrinho ainda não foram persistidos)
+      async fetchStock(uuid){ try { const st = await Http.fetchJson(`/api/stock/?product__uuid=${uuid}`); const rows = st.results||st||[]; const q = (rows[0] && rows[0].quantity_current) || 0; this.$nextTick(()=>{ this.productStock[uuid] = q; }); } catch(e){ this.productStock[uuid] = null; } },
+      buildPaymentMetadata(){
+        const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method)||null;
+        if (!pm) return null;
+        const meta = { uuid: pm.uuid, name: pm.name, type: pm.type };
+        if (this.isCardCredit()){
+          try { meta.installments = parseInt(this.installments||1,10)||1; } catch(e){}
+          try { if (this.cardBrand) meta.card_brand = String(this.cardBrand); } catch(e){}
+          try { const pct = this.feePercent(); if (pct>0) meta.fee_percent = pct; } catch(e){}
+          try { const fv = this.feeValue(); if (fv>0) meta.fee_value = fv; } catch(e){}
         }
-        catch(e){ Http.toast(e.message||'Erro ao criar pedido','error'); throw e; }
+        return meta;
       },
+      async ensureOrder(){ if (this.orderId) return; const payment_metadata = this.buildPaymentMetadata(); if (!this.seller) { try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e){} } if (!this.seller) throw new Error('Defina um vendedor antes de criar o pedido.'); const order_type = (String(this.orderType||'')==='orcamento') ? 'orcamento' : 'carrinho'; const created = await Http.fetchJson('/api/sale/orders/', { method:'POST', body: JSON.stringify({ customer: this.customer||null, seller: this.seller||null, payment_method: this.payment_method||null, order_type, order_discount_abs: parseFloat(this.orderDiscountAbs||0), payment_metadata })}); if (!created || !created.uuid) throw new Error('Falha ao criar pedido'); this.orderId = created.uuid; this.orderStatus = created.status||'DRAFT'; },
       async addItem(p){
-        // Adiciona item apenas localmente — a ordem no backend será criada apenas ao finalizar
-        const unit = parseFloat(p.sale_price||0) || 0;
-        const quantity = 1;
-        // Bloquear se estoque informado for 0
-        const st = this.productStock[p.uuid]; if (st !== undefined && st !== null && parseFloat(st) <= 0) { Http.toast('Produto sem estoque','error'); return; }
-        // Se já existe o produto no carrinho, incrementar quantidade localmente
-        const idx = (this.items||[]).findIndex(it => String(it.product) === String(p.uuid));
-        if (idx !== -1) {
-          this.items[idx].quantity = (parseFloat(this.items[idx].quantity||0) + 1);
-          // não há orderId/uuid — syncItem não chamará API
-          await this.syncItem(idx);
-        } else {
-          this.items.push({ uuid: null, product: p.uuid, name: p.name, quantity: quantity, unit_price: unit, discount_percent: 0, warn: '' });
-        }
+        const unit = parseFloat(p.sale_price||0)||0;
+        const quantity=1;
+        const st = this.productStock[p.uuid];
+        if (st!==undefined && st!==null && parseFloat(st)<=0) { Http.toast('Produto sem estoque','error'); return; }
+        // Somente adiciona localmente; a criação do pedido e envio ao backend ocorre no finalize()
+        this.items.push({ uuid: null, product: p.uuid, name: p.name, quantity, unit_price: unit, discount_percent: 0, warn: '' });
       },
       async syncItem(idx){
-        const it = this.items[idx]; if (!it || !this.orderId || !it.uuid) return;
-        // Validação: impedir quantidade maior que estoque atual (se conhecido)
-        let stock = this.productStock[it.product];
-        if (stock === undefined) { try { await this.fetchStock(it.product); } catch(e) {} stock = this.productStock[it.product]; }
+        const it = this.items[idx];
+        if (!it) return;
+        // Atualiza validações locais de estoque
+        if (this.productStock[it.product] === undefined) { await this.fetchStock(it.product); }
+        const stock = this.productStock[it.product];
         const q = parseFloat(it.quantity||0);
-        const st = parseFloat(stock);
-        if (stock !== null && stock !== undefined && !isNaN(st) && q > st) {
-          if (st <= 0) {
-            Http.toast('Sem estoque', 'error');
-            it.warn = 'Sem estoque';
-            it.quantity = 0;
-          } else {
-            Http.toast('Estoque insuficiente', 'error');
-            it.warn = 'Quantidade ajustada para 1 (estoque insuficiente)';
-            it.quantity = 1;
+        const stn = parseFloat(stock);
+        if (stock!==null && stock!==undefined && !isNaN(stn) && q>stn) {
+          if (stn <= 0) { Http.toast('Sem estoque','error'); it.warn='Sem estoque'; it.quantity=0; }
+          else { Http.toast('Estoque insuficiente','error'); it.warn='Quantidade ajustada para 1'; it.quantity=1; }
+          // Só sincroniza com backend se o item já existir lá
+          if (this.orderId && it.uuid) {
+            try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'PATCH', body: JSON.stringify({ quantity: it.quantity, discount_percent: it.discount_percent||0 })}); } catch(e){}
           }
-          try {
-            await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'PATCH', body: JSON.stringify({ quantity: it.quantity, discount_percent: it.discount_percent||0 })});
-          } catch(e) { /* manter aviso visual; sincroniza tentativa na próxima edição */ }
           return;
         }
-        try {
-          await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, {
-            method: 'PATCH',
-            body: JSON.stringify({ quantity: it.quantity, discount_percent: it.discount_percent||0 })
-          });
-          it.warn = '';
-        }
-        catch(e){ Http.toast(e.message||'Erro ao atualizar item','error'); }
-      },
-      async removeItem(idx){
-        const it = this.items[idx]; if (!it) return;
-        this.items.splice(idx,1);
+        // Se já existe no backend, sincroniza PATCH; caso contrário, mantém apenas local
         if (this.orderId && it.uuid) {
-          try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'DELETE' }); }
-          catch(e){ Http.toast(e.message||'Erro ao remover item','error'); }
+          try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'PATCH', body: JSON.stringify({ quantity: it.quantity, discount_percent: it.discount_percent||0 })}); it.warn=''; } catch(e){ Http.toast(e.message||'Erro ao atualizar item','error'); }
         }
       },
-      total(){
-        const base = this.baseTotal();
-        const fee = this.feeValue();
-        return base + fee;
+      removeItem(idx){ const it=this.items[idx]; this.items.splice(idx,1); if (this.orderId && it && it.uuid) { Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'DELETE' }).catch(()=>{}); } },
+      itemsSubtotal(){ return this.items.reduce((s,it)=> s + (parseFloat(it.quantity||0)*parseFloat(it.unit_price||0)), 0); },
+      baseTotal(){ const subtotal = this.items.reduce((s,it)=> s + (parseFloat(it.quantity||0)*parseFloat(it.unit_price||0)*(1-(parseFloat(it.discount_percent||0)/100))), 0); const dPct = Math.max(0, parseFloat(this.orderDiscount||0)||0); const afterPct = subtotal*(1-(dPct/100)); const dAbs = Math.max(0, parseFloat(this.orderDiscountAbs||0)||0); const afterAbs = Math.max(0, afterPct - dAbs); return Math.max(0, afterAbs); },
+      discountApplied(){ const sub=this.itemsSubtotal(); const base=this.baseTotal(); return Math.max(0, sub-base); },
+      feePercent(){ if (!this.isCardCredit()) return 0; const brandId=String(this.cardBrand||''); if (!brandId) return 0; const tiers=(this.cardFees||[]).filter(t=> String(t.brand)===brandId && ((t.type||'').toLowerCase()==='card_credit')); if(!tiers.length) return 0; const n=parseInt(this.installments||1,10)||1; for(const t of tiers){const min=parseInt(t.installments_min||1,10), max=parseInt(t.installments_max||1,10); if(n>=min && n<=max) return parseFloat(t.fee_percent||0)||0;} return 0; },
+      feeValue(){ const pct=this.feePercent(); if(!(pct>0)) return 0; const base=this.baseTotal(); return base*(pct/100); },
+      feeDisplay(){
+        try{
+          const pct = this.feePercent();
+          const pctStr = (pct>0) ? (pct.toFixed(2)+'%') : '';
+          const val = this.feeValue();
+          const valStr = (val>0) ? this.formatMoney(val) : '';
+          if (pctStr && valStr) return `${pctStr} (${valStr})`;
+          if (pctStr) return pctStr;
+          if (valStr) return valStr;
+          return '-';
+        }catch(e){ return '-'; }
       },
-      itemsSubtotal(){
-        return this.items.reduce((s, it)=> s + (parseFloat(it.quantity||0)*parseFloat(it.unit_price||0)), 0);
+      total(){ return this.baseTotal() + this.feeValue(); },
+      togglePayment(){ this.showPaymentSelect = !this.showPaymentSelect; },
+      syncPaymentMethod(){
+        if (!this.isCardCredit()) {
+          this.cardBrand = '';
+          this.installments = 1;
+          return;
+        }
+        this.onCardBrandChange();
       },
-      baseTotal(){
-        const subtotal = this.items.reduce((s, it)=> s + (parseFloat(it.quantity||0)*parseFloat(it.unit_price||0) * (1 - (parseFloat(it.discount_percent||0)/100))), 0);
-        const dPct = Math.max(0, parseFloat(this.orderDiscount||0) || 0);
-        const afterPct = subtotal * (1 - (dPct/100));
-        const dAbs = Math.max(0, parseFloat(this.orderDiscountAbs||0) || 0);
-        const afterAbs = Math.max(0, afterPct - dAbs);
-        return Math.max(0, afterAbs);
+      paymentMethodName(){ const pm=(this.paymentMethods||[]).find(x=>x.uuid===this.payment_method); return pm ? `Forma: ${pm.name}` : 'Selecionar forma de pagamento'; },
+      paymentSummary(){
+        const pm=(this.paymentMethods||[]).find(x=>x.uuid===this.payment_method);
+        if(!pm) return '';
+        const name = pm.name || pm.code || '';
+        if(this.isCardCredit()){
+          const b=(this.cardBrands||[]).find(x=> String(x.id)===String(this.cardBrand));
+          const brandName = b ? b.name : '';
+          const n = parseInt(this.installments||0,10)||0;
+          const fee = this.feePercent();
+          const parts=[name];
+          if(brandName) parts.push(brandName);
+          if(n>0) parts.push(`${n}x`);
+          if(fee>0) parts.push(`${fee.toFixed(2)}%`);
+          return parts.join(' • ');
+        }
+        return name;
       },
-      discountApplied(){
-        const sub = this.itemsSubtotal();
-        const base = this.baseTotal();
-        return Math.max(0, sub - base);
+      sellerDisplay(){ const s=(this.sellers||[]).find(x=>x.uuid===this.seller); if(!s) return '(não definido)'; return s.name||'(não definido)'; },
+      onCardBrandChange(){
+        const avail = this.availableInstallments();
+        if (avail.length > 0) {
+          this.installments = avail[0];
+        } else {
+          this.installments = 1;
+        }
       },
-      feePercent(){
-        // Only applies for card credit with a selected brand and valid installments within tier bounds
+      availableInstallments(){
+        if (!this.isCardCredit()) return [];
+        const brandId = String(this.cardBrand||'');
+        if (!brandId) return [];
+        const tiers = (this.cardFees||[]).filter(t => String(t.brand)===brandId && ((t.type||'').toLowerCase()==='card_credit'));
+        const set = new Set();
+        for (const t of tiers){
+          const min = parseInt(t.installments_min||1,10);
+          const max = parseInt(t.installments_max||1,10);
+          for (let n = Math.max(1,min); n <= Math.max(min,max); n++) set.add(n);
+        }
+        return Array.from(set).sort((a,b)=>a-b);
+      },
+      feePercentFor(n){
         if (!this.isCardCredit()) return 0;
         const brandId = String(this.cardBrand||'');
         if (!brandId) return 0;
-        const tiers=(this.cardFees||[]).filter(t=> String(t.brand)===brandId && ((t.type||'').toLowerCase()==='card_credit'));
-        if (!tiers.length) return 0;
-        const n = parseInt(this.installments||1, 10) || 1;
-        for (const t of tiers) {
-          const min=parseInt(t.installments_min||1,10), max=parseInt(t.installments_max||1,10);
-          if (n>=min && n<=max) return parseFloat(t.fee_percent||0)||0;
+        const tiers = (this.cardFees||[]).filter(t=> String(t.brand)===brandId && ((t.type||'').toLowerCase()==='card_credit'));
+        const nn = parseInt(n||1,10)||1;
+        for (const t of tiers){
+          const min = parseInt(t.installments_min||1,10), max = parseInt(t.installments_max||1,10);
+          if (nn>=min && nn<=max) return parseFloat(t.fee_percent||0)||0;
         }
         return 0;
       },
-      feeValue(){
-        const pct = this.feePercent();
-        if (!(pct>0)) return 0;
-        const base = this.baseTotal();
-        return base * (pct/100);
-      },
-      async syncPaymentMethod(){ if (!this.orderId || !this.payment_method) return; try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'PATCH', body: JSON.stringify({ payment_method: this.payment_method })}); } catch(e){ Http.toast(e.message||'Falha ao definir forma de pagamento','error'); } },
-      togglePayment(){ this.showPaymentSelect = !this.showPaymentSelect; },
-      paymentMethodName(){ const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method); return pm ? `Forma: ${pm.name}` : 'Selecionar forma de pagamento'; },
-      sellerDisplay(){
-        const s = (this.sellers||[]).find(x=>x.uuid===this.seller);
-        if (!s) return '(não definido)';
-        try {
-          const uid = (s.user !== undefined && s.user !== null) ? String(s.user) : '';
-          if (uid) return `${s.name} • user#${uid}`;
-          return s.name || '(não definido)';
-        } catch(e) {
-          return s.name || '(não definido)';
-        }
-      },
-      async copySalesOrder(){
-        try{
-          const so = String(this.salesOrder||'').trim();
-          if (!so) return;
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(so);
-          } else {
-            const ta = document.createElement('textarea');
-            ta.value = so; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-          }
-          Http.toast('Número do pedido copiado','success');
-        }catch(e){ Http.toast('Não foi possível copiar','error'); }
-      },
-      async setOrderType(t){
-        const v = (String(t||'').toLowerCase()==='orcamento') ? 'orcamento' : 'carrinho';
-        this.orderType = v;
-        if (this.orderId) {
-          try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'PATCH', body: JSON.stringify({ order_type: v })}); } catch(e) {}
-        }
-      },
-      isCardCredit(){ const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method); if(!pm) return false; const t=(pm.type||'').toLowerCase(); const n=(pm.name||'').toLowerCase(); return t==='card_credit' || n.includes('crédito') || n.includes('credito'); },
-      availableInstallments(){
-        if (!this.cardBrand) return [];
-        const tiers=(this.cardFees||[]).filter(t=> String(t.brand)===String(this.cardBrand) && ((t.type||'').toLowerCase()==='card_credit'));
-        if(!tiers.length) return [];
-        const set=new Set();
-        tiers.forEach(t=>{ const min=parseInt(t.installments_min||1,10), max=parseInt(t.installments_max||1,10); for(let i=min;i<=max;i++){ set.add(i) } });
-        const arr=Array.from(set).sort((a,b)=>a-b);
-        return arr;
-      },
       installmentLabel(n){
-        const brandId = String(this.cardBrand||'');
-        const tiers=(this.cardFees||[]).filter(t=> String(t.brand)===brandId && ((t.type||'').toLowerCase()==='card_credit'));
-        let fee = null;
-        for (const t of tiers){
-          const min=parseInt(t.installments_min||1,10), max=parseInt(t.installments_max||1,10);
-          if (n>=min && n<=max){ fee = t.fee_percent; break; }
+        try { n = parseInt(n,10)||1; } catch(e){ n = 1; }
+        const pct = this.feePercentFor(n);
+        return pct>0 ? `${n}x - ${pct.toFixed(2)}% juros` : `${n}x`;
+      },
+      canFinalize(){
+        const hasItems = Array.isArray(this.items) && this.items.length > 0;
+        const hasCustomer = !!this.customer;
+        if ((this.orderType||'') === 'orcamento') {
+          return hasItems && hasCustomer;
         }
-        const f = (fee!=null) ? (parseFloat(fee)||0).toFixed(2) + '%' : '';
-        return f ? (n + 'x - ' + f) : (n + 'x');
-      },
-      onCardBrandChange(){
-        const list = this.availableInstallments();
-        if (list.length === 0) { this.installments = 1; }
-        else if (!list.includes(this.installments)) { this.installments = list[0]; }
-      },
-      async applyOrderDiscount(){ const d = parseFloat(this.orderDiscount||0); if (isNaN(d) || d<0) { this.orderDiscount = 0; } },
-      async applyOrderDiscountAbs(){ const v = parseFloat(this.orderDiscountAbs||0); if (isNaN(v) || v<0) { this.orderDiscountAbs = 0; } },
-      // Aplica desconto absoluto somente ao nível do pedido (orderDiscountAbs).
-      // Não altera os descontos por item automaticamente — esses permanecem controlados manualmente.
-      async applyOrderDiscountAbs(){
-        const v = parseFloat(this.orderDiscountAbs||0);
-        if (isNaN(v) || v < 0) { this.orderDiscountAbs = 0; }
-        // baseTotal() já usa this.orderDiscountAbs para reduzir o total, então não precisamos fazer mais nada aqui
+        const hasPayment = !!this.payment_method;
+        let paymentOk = hasPayment;
+        if (hasPayment && this.isCardCredit()) {
+          const hasBrand = !!this.cardBrand;
+          const hasInstallments = parseInt(this.installments || 0, 10) > 0;
+          paymentOk = hasBrand && hasInstallments;
+        }
+        return hasItems && hasCustomer && paymentOk;
       },
       async finalize(){
-        // Validar requisitos antes de criar a ordem
-        if (!Array.isArray(this.items) || this.items.length === 0) { Http.toast('Adicione items antes de finalizar','error'); return; }
+        if (!Array.isArray(this.items) || this.items.length===0) { Http.toast('Adicione itens antes de finalizar','error'); return; }
         if (!this.customer) { Http.toast('Defina o cliente','error'); return; }
-        if (!this.payment_method) { Http.toast('Defina a forma de pagamento','error'); return; }
-        // Garantir vendedor
-        if (!this.seller) {
-          try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e) {}
-        }
-        if (!this.seller) { Http.toast('Defina um vendedor antes de criar o pedido.','error'); return; }
+        const isOrc = String(this.orderType||'')==='orcamento';
+        if (!isOrc && !this.payment_method) { Http.toast('Defina a forma de pagamento','error'); return; }
 
-        // Criar a order no backend
-        let createdOrder = null;
-        try {
-          // build payment metadata (use computed feePercent for card installments)
-          let pm_meta = null;
+        // 1) Criar pedido somente agora
+        if (!this.orderId) {
           try {
-            const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method);
-            if (pm) {
-              const computedFee = this.isCardCredit() ? this.feePercent() : (pm.fee_percent||0);
-              // Absolute fee value computed from the base (feeValue()) - format to 2 decimals
-              const computedFeeValue = parseFloat((this.feeValue() || 0).toFixed(2));
-              pm_meta = { uuid: pm.uuid, name: pm.name, type: pm.type, fee_percent: parseFloat(computedFee||0), fee_value: computedFeeValue };
-              if (this.isCardCredit()) { pm_meta.installments = this.installments || 1; pm_meta.card_brand = this.cardBrand || null; }
-            }
-          } catch(e){}
-          createdOrder = await Http.fetchJson('/api/sale/orders/', { method:'POST', body: JSON.stringify({ customer: this.customer||null, seller: this.seller||null, payment_method: this.payment_method||null, order_type: this.orderType, order_discount_abs: parseFloat(this.orderDiscountAbs||0), payment_metadata: pm_meta })});
-           if (!createdOrder || !createdOrder.uuid) throw new Error('Falha ao criar pedido');
-           this.orderId = createdOrder.uuid;
-           this.orderStatus = createdOrder.status || 'DRAFT';
-         } catch(e) {
-           Http.toast(e.message||'Erro ao criar pedido','error'); return;
-         }
-
-         // Agora persistir os itens locais no servidor. Se falhar, remover a order criada (rollback)
-         try {
-           for (let i = 0; i < this.items.length; i++) {
-             const it = this.items[i];
-             // if item already has uuid (unlikely), skip or patch
-             if (it.uuid && this.orderId) continue;
-             const payLoad = { product: it.product, quantity: it.quantity, unit_price: it.unit_price };
-             if (it.discount_percent) payLoad.discount_percent = it.discount_percent;
-             const resp = await Http.fetchJson(`/api/sale/orders/${this.orderId}/add-item/`, { method:'POST', body: JSON.stringify(payLoad) });
-             if (!resp || !resp.uuid) throw new Error('Falha ao adicionar item: ' + (it.name || it.product));
-             // atualizar uuid local
-             this.items[i].uuid = resp.uuid;
-           }
-
-          // Depois de itens criados, aplicar/confirmar a order (incluindo metadata e desconto absoluto)
-          try {
-            const pm_meta = (function(self){
-              try {
-                const pm = (self.paymentMethods||[]).find(x=>x.uuid===self.payment_method);
-                if (pm) {
-                  const computedFee = self.isCardCredit() ? self.feePercent() : (pm.fee_percent||0);
-                  // Absolute fee value computed from the base (feeValue()) - format to 2 decimals
-                  const computedFeeValue = parseFloat((self.feeValue() || 0).toFixed(2));
-                  const m = { uuid: pm.uuid, name: pm.name, type: pm.type, fee_percent: parseFloat(computedFee||0), fee_value: computedFeeValue };
-                  if (self.isCardCredit()) { m.installments = self.installments || 1; m.card_brand = self.cardBrand || null; }
-                  return m;
-                }
-              } catch(e){}
-              return null;
-            })(this);
-            await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'PATCH', body: JSON.stringify({ payment_method: this.payment_method, payment_metadata: pm_meta, order_discount_abs: parseFloat(this.orderDiscountAbs||0), customer: this.customer, seller: this.seller })});
-          } catch(e) {}
-          try { const res = await Http.fetchJson(`/api/sale/orders/${this.orderId}/action/`, { method:'POST', body: JSON.stringify({ action: 'confirm' })});
-            Http.toast('Pedido finalizado', 'success');
-            this.confirmedOrderId = this.orderId;
-            this.orderStatus = (res && res.status) ? res.status : 'CONFIRMED';
-            this.salesOrder = (res && res.sales_order) ? res.sales_order : (this.salesOrder || '');
+            await this.ensureOrder();
           } catch(e) {
-            // rollback: remover a ordem criada para não deixar rascunho parcial no servidor
-            try { if (this.orderId) await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'DELETE' }); } catch(ex) {}
-            this.orderId = null;
-            Http.toast(e.message||'Erro ao processar itens/confirmar pedido','error');
+            Http.toast('Falha ao criar pedido','error');
+            return;
           }
-        } catch(e) {
-          Http.toast(e.message||'Erro ao criar pedido','error');
         }
-      },
-      async deleteOrder(){
-        if (!this.orderId) return;
-        if ((this.orderStatus||'DRAFT') !== 'DRAFT') { Http.toast('Não é possível excluir após confirmação','error'); return; }
-        const self = this;
-        const onConfirm = async function(){
-          try {
-            await Http.fetchJson(`/api/sale/orders/${self.orderId}/`, { method:'DELETE' });
-            Http.toast('Venda excluída','success');
-            self.resetOrder();
-          } catch(e){ Http.toast(e.message||'Erro ao excluir venda','error'); }
-        };
-        window.dispatchEvent(new CustomEvent('show-confirm', {
-          detail: {
-            title: 'Excluir venda',
-            message: 'Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.',
-            type: 'danger',
-            onConfirm
+        if (!this.orderId) { Http.toast('Não foi possível criar o pedido','error'); return; }
+
+        // 2) Enviar itens locais para o backend
+        for (let i=0;i<this.items.length;i++){
+          const it = this.items[i];
+          if (!it.uuid) {
+            try {
+              const resp = await Http.fetchJson(`/api/sale/orders/${this.orderId}/add-item/`, { method:'POST', body: JSON.stringify({ product: it.product, quantity: it.quantity, unit_price: it.unit_price, discount_percent: it.discount_percent||0 })});
+              if (resp && resp.uuid) this.items[i].uuid = resp.uuid;
+            } catch(e) {
+              Http.toast('Erro ao enviar item','error');
+              return;
+            }
+          } else {
+            try {
+              await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'PATCH', body: JSON.stringify({ quantity: it.quantity, discount_percent: it.discount_percent||0 })});
+            } catch(e){}
           }
-        }));
+        }
+
+        // 3) Fluxo por tipo
+        if (isOrc) {
+          // Persistir método, metadados e descontos gerais
+          try {
+            const payload = { order_type: 'orcamento', order_discount_abs: parseFloat(this.orderDiscountAbs||0)||0 };
+            if (this.payment_method) { payload.payment_method = this.payment_method; payload.payment_metadata = this.buildPaymentMetadata(); }
+            await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'PATCH', body: JSON.stringify(payload)});
+          } catch(e){}
+          Http.toast('Orçamento finalizado','success'); this.orderStatus='DRAFT';
+          try { window.location.assign(`/orders/confirm?id=${encodeURIComponent(this.orderId)}`); } catch(e){}
+          return;
+        }
+        // Pedido: gravar método/metadados e confirmar
+        try {
+          const payload = { order_discount_abs: parseFloat(this.orderDiscountAbs||0)||0 };
+          if (this.payment_method) { payload.payment_method = this.payment_method; payload.payment_metadata = this.buildPaymentMetadata(); }
+          await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'PATCH', body: JSON.stringify(payload) });
+        } catch(e){}
+        try {
+          const res = await Http.fetchJson(`/api/sale/orders/${this.orderId}/action/`, { method:'POST', body: JSON.stringify({ action:'confirm' })});
+          this.confirmedOrderId=this.orderId; this.orderStatus=(res&&res.status)||'CONFIRMED'; this.salesOrder=(res&&res.sales_order)||this.salesOrder;
+          Http.toast('Pedido finalizado','success');
+          try { window.location.assign(`/orders/confirm?id=${encodeURIComponent(this.orderId)}`); } catch(e){}
+        } catch(e){ Http.toast(e.message||'Erro ao confirmar','error'); }
       },
-      orderTypeLabel(){ return this.orderType==='orcamento' ? 'Orçamento' : 'Carrinho'; },
-      async emitNFe(){ if (!this.confirmedOrderId) return; try { const inv = await Http.fetchJson(`/api/nfe/invoices/from-order/${this.confirmedOrderId}/`, { method:'POST' }); this.lastInvoice = inv; Http.toast('NF-e solicitada', 'success'); } catch(e){ Http.toast(e.message||'Falha ao emitir NF-e','error'); } },
-      resetOrder(){ this.search=''; this.products=[]; this.items=[]; this.orderId=null; this.confirmedOrderId=''; this.lastInvoice=null; this.productNameCache={}; this.productStock={}; }
+      async deleteOrder(){ if (!this.orderId) return; const onConfirm = async ()=>{ try{ await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'DELETE' }); Http.toast('Venda excluída','success'); this.resetOrder(); }catch(e){ Http.toast(e.message||'Erro ao excluir venda','error'); } }; window.dispatchEvent(new CustomEvent('show-confirm', { detail: { title:'Excluir venda', message:'Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.', type:'danger', onConfirm } })); },
+      resetOrder(){ this.search=''; this.products=[]; this.items=[]; this.orderId=null; this.confirmedOrderId=''; this.lastInvoice=null; this.productNameCache={}; this.productStock={}; },
     }
   }
- </script>
- <!-- Normalizador de acentuação (dentro do bloco para garantir execução) -->
- <script src="/static/js/sales-fix.js"></script>
+</script>
 {% endblock %}
+
+
+
+

@@ -1,0 +1,200 @@
+﻿{% extends "base.html" %}
+{% block title %}PDV Â· MVPSale{% endblock %}
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Vendas" b2="PDV" %}
+<h1 class="text-2xl font-semibold mb-4">PDV</h1>
+
+<div x-data="pos()" x-init="init()" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-2 space-y-4">
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+      <div class="flex gap-2 items-center">
+        <input x-model="search" @keyup.enter="loadProducts()" placeholder="Buscar produto (nome, cÃ³digo, cÃ³digo de barras)" class="flex-1 px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+        <button @click="loadProducts()" class="px-3 py-2 rounded bg-slate-700">Buscar</button>
+      </div>
+      <div class="mt-3 max-h-56 overflow-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-slate-800/60"><tr>
+            <th class="text-left px-3 py-2">Produto</th>
+            <th class="text-left px-3 py-2">PreÃ§o</th>
+            <th class="text-left px-3 py-2">Estoque</th>
+            <th class="text-left px-3 py-2"></th>
+          </tr></thead>
+          <tbody>
+            <template x-for="p in products" :key="p.uuid">
+              <tr>
+                <td class="px-3 py-2" x-text="p.name"></td>
+                <td class="px-3 py-2" x-text="formatMoney(p.sale_price||0)"></td>
+                <td class="px-3 py-2" x-text="formatQty(productStock[p.uuid])"></td>
+                <td class="px-3 py-2">
+                  <template x-if="((productStock[p.uuid] ?? null) === null || parseFloat(productStock[p.uuid]||0) > 0) && parseFloat(p.sale_price||0) > 0">
+                    <button @click="addItem(p)" class="text-emerald-400 hover:underline">Adicionar</button>
+                  </template>
+                  <template x-if="((productStock[p.uuid] ?? null) === null || parseFloat(productStock[p.uuid]||0) > 0) && !(parseFloat(p.sale_price||0) > 0)">
+                    <button @click="Http.toast('Defina o preÃ§o em CatÃ¡logo > Produto.', 'error'); window.open('/catalog?tab=products','_blank');" class="text-slate-400 hover:underline">Sem preÃ§o</button>
+                  </template>
+                  <template x-if="(productStock[p.uuid] ?? null) !== null && parseFloat(productStock[p.uuid]||0) <= 0">
+                    <span class="text-rose-400 text-xs">Sem estoque</span>
+                  </template>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+      <h2 class="font-medium mb-2">Itens</h2>
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-800/60"><tr>
+          <th class="text-left px-3 py-2">Produto</th>
+          <th class="text-left px-3 py-2">Qtd</th>
+          <th class="text-left px-3 py-2">UnitÃ¡rio</th>
+          <th class="text-left px-3 py-2">Desc. %</th>
+          <th class="text-left px-3 py-2">Total</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          <template x-for="(it, idx) in items" :key="it.uuid || it.product">
+            <tr>
+              <td class="px-3 py-2" x-text="it.name"></td>
+              <td class="px-3 py-2">
+                <div class="flex items-center gap-2">
+                  <input type="number" min="1" step="1" class="w-24 px-2 py-1 rounded bg-slate-900 border border-slate-700" :class="{ 'border-rose-500': it.warn }" x-model.number="it.quantity" @input.debounce.300ms="syncItem(idx)" @blur="syncItem(idx)"/>
+                  <span class="text-xs text-slate-500">disp.: <span x-text="formatQty(productStock[it.product])"></span></span>
+                </div>
+                <div class="mt-1 text-xs text-rose-400" x-show="it.warn" x-text="it.warn"></div>
+              </td>
+              <td class="px-3 py-2"><input type="number" min="0" step="0.01" class="w-24 px-2 py-1 rounded bg-slate-800 border border-slate-700 cursor-not-allowed" x-model.number="it.unit_price" readonly/></td>
+              <td class="px-3 py-2"><input type="number" min="0" max="100" step="0.01" class="w-24 px-2 py-1 rounded bg-slate-900 border border-slate-700" x-model.number="it.discount_percent" @input.debounce.300ms="syncItem(idx)"/></td>
+              <td class="px-3 py-2" x-text="formatMoney(it.quantity*it.unit_price*(1 - (parseFloat(it.discount_percent||0)/100)))"></td>
+              <td class="px-3 py-2"><button @click="removeItem(idx)" class="text-rose-400 hover:underline">Remover</button></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="space-y-4">
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-3">
+      <div>
+        <label class="block text-sm mb-1">Cliente</label>
+        <select x-model="customer" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+          <option value="">Selecione</option>
+          <template x-for="c in customers" :key="c.uuid"><option :value="c.uuid" x-text="c.name"></option></template>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm mb-1">Vendedor</label>
+        <div class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-200" role="textbox" aria-readonly="true" x-text="sellerDisplay()"></div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div>
+          <div>
+            <label class="block text-sm mb-1">Desconto geral (%)</label>
+            <input x-model.number="orderDiscount" @change="applyOrderDiscount()" @input="applyOrderDiscount()" type="number" min="0" max="100" step="0.01" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" placeholder="0,00" />
+          </div>
+          <div class="mt-3">
+            <label class="block text-sm mb-1">Desconto (valor)</label>
+            <input x-model.number="orderDiscountAbs" @change="applyOrderDiscountAbs()" type="number" min="0" step="1" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" placeholder="0" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Forma de pagamento</label>
+          <div class="flex gap-2 items-center">
+            <button @click="togglePayment()" class="px-3 py-2 rounded bg-slate-700 flex-1 text-left" x-text="paymentMethodName()"></button>
+          </div>
+          <div x-show="showPaymentSelect" class="mt-2">
+            <select x-model="payment_method" @change="syncPaymentMethod()" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+              <option value="">Selecione</option>
+              <template x-for="pm in paymentMethods" :key="pm.uuid"><option :value="pm.uuid" x-text="pm.name"></option></template>
+            </select>
+          </div>
+          <div class="mt-2 space-y-2" x-show="isCardCredit()">
+            <div>
+              <label class="block text-sm mb-1">Bandeira</label>
+              <select x-model="cardBrand" @change="onCardBrandChange()" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+                <option value="">Selecione</option>
+                <template x-for="b in cardBrands" :key="b.id"><option :value="b.id" x-text="b.name"></option></template>
+              </select>
+            </div>
+            <div x-show="availableInstallments().length > 0">
+              <label class="block text-sm mb-1">Parcelas</label>
+              <select x-model.number="installments" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+                <template x-for="n in availableInstallments()" :key="'parc-'+n"><option :value="n" x-text="installmentLabel(n)"></option></template>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-1">
+        <div class="text-sm">Subtotal: <span x-text="formatMoney(itemsSubtotal())"></span></div>
+        <div class="text-xs text-slate-400"><span class="font-medium">Desconto aplicado:</span> <span x-text="formatMoney(discountApplied())"></span></div>
+        <div class="text-xs text-slate-400"><span class="font-medium">Taxa CartÃ£o (Taxa CartÇœo):</span> <span x-text="(feePercent()||0).toFixed(2)+'%'"></span></div>
+        <div class="text-xs text-slate-400"><span class="font-medium">Valor juros:</span> <span x-text="formatMoney(feeValue())"></span></div>
+        <div class=\"text-lg flex items-center gap-2\"><span>Total:</span><span x-text="formatMoney(total())"></span></div>
+      </div>
+
+      <div class="flex flex-wrap gap-2 items-center">
+        <button @click="finalize()" :disabled="!canFinalize()" :aria-disabled="!canFinalize()" :class="{ 'opacity-50 pointer-events-none': !canFinalize() }" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded px-3 py-2" x-text="orderType==='orcamento' ? 'Salvar orÃ§amento' : 'Finalizar'"></button>
+        <button @click="resetOrder()" class="px-3 py-2 rounded bg-slate-700">Cancelar</button>
+        <template x-if="orderId && (orderStatus||'DRAFT')==='DRAFT'"><button @click="deleteOrder()" class="px-3 py-2 rounded bg-rose-700 hover:bg-rose-600 text-white">Excluir venda</button></template>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function pos(){
+    return {
+      search: '', products: [], items: [], customers: [], sellers: [], orderId: null, customer: '', seller: '',
+      paymentMethods: [], payment_method: '', showPaymentSelect: false, confirmedOrderId: '', lastInvoice: null,
+      cardBrands: [], cardFees: [], cardBrand: '', installments: 1,
+      orderDiscount: 0, orderDiscountAbs: 0,
+      productNameCache: {}, productStock: {},
+      orderType: 'carrinho',
+      orderStatus: 'DRAFT',
+      salesOrder: '',
+      isCardCredit(){ const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method); if(!pm) return false; const t=(pm.type||'').toLowerCase(); const n=(pm.name||'').toLowerCase(); return t==='card_credit' || n.includes('crÃ©dito') || n.includes('credito'); },
+      formatMoney(v){ try { return 'R$ ' + (parseFloat(v)||0).toFixed(2); } catch(e) { return 'R$ 0,00'; } },
+      formatQty(v){ const n = parseFloat(v); if (isNaN(n)) return '-'; return Math.round(n).toString(); },
+      async init(){
+        try { const cs = await Http.fetchJson('/api/people/customers/?ordering=name'); this.customers = cs.results||cs||[]; } catch(e){}
+        try { const ss = await Http.fetchJson('/api/people/sellers/?ordering=name'); this.sellers = ss.results||ss||[]; } catch(e){}
+        try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e){}
+        try { const pms = await Http.fetchJson('/api/payment/methods/?ordering=name'); this.paymentMethods = pms.results||pms||[]; } catch(e){}
+        try { const brands = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); this.cardBrands = brands.results||brands||[]; } catch(e){}
+        try { const fees = await Http.fetchJson('/api/payment/card-fees/?type=card_credit'); this.cardFees = fees.results||fees||[]; } catch(e){}
+      },
+      async loadProducts(){
+        const p = new URLSearchParams(); if (this.search && this.search.trim().length >= 2) p.set('search', this.search.trim()); else { this.products=[]; return; } p.set('ordering','name');
+        try { const data = await Http.fetchJson(`/api/catalog/products/?${p.toString()}`); this.products = (data && (data.results||data)) || []; (this.products||[]).forEach(pr=>{ if (pr && pr.uuid) this.productNameCache[pr.uuid] = pr.name; }); } catch(e){ Http.toast(e.message||'Erro ao carregar produtos','error'); }
+      },
+      async fetchStock(uuid){ try { const st = await Http.fetchJson(`/api/stock/?product__uuid=${uuid}`); const rows = st.results||st||[]; const q = (rows[0] && rows[0].quantity_current) || 0; this.$nextTick(()=>{ this.productStock[uuid] = q; }); } catch(e){ this.productStock[uuid] = null; } },
+      async ensureOrder(){ if (this.orderId) return; const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method)||null; const payment_metadata = pm ? { uuid: pm.uuid, name: pm.name, type: pm.type } : null; if (!this.seller) { try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e){} } if (!this.seller) throw new Error('Defina um vendedor antes de criar o pedido.'); const created = await Http.fetchJson('/api/sale/orders/', { method:'POST', body: JSON.stringify({ customer: this.customer||null, seller: this.seller||null, payment_method: this.payment_method||null, order_type: this.orderType, order_discount_abs: parseFloat(this.orderDiscountAbs||0), payment_metadata })}); if (!created || !created.uuid) throw new Error('Falha ao criar pedido'); this.orderId = created.uuid; this.orderStatus = created.status||'DRAFT'; },
+      async addItem(p){ try { if (!this.orderId) await this.ensureOrder(); } catch(e){} const unit = parseFloat(p.sale_price||0)||0; const quantity=1; const st = this.productStock[p.uuid]; if (st!==undefined && st!==null && parseFloat(st)<=0) { Http.toast('Produto sem estoque','error'); return; } try { const resp = await Http.fetchJson(`/api/sale/orders/${this.orderId}/add-item/`, { method:'POST', body: JSON.stringify({ product: p.uuid, quantity, unit_price: unit })}); if (resp && resp.uuid) { this.items.push({ uuid: resp.uuid, product: p.uuid, name: p.name, quantity, unit_price: unit, discount_percent: 0, warn: '' }); return; } } catch(e){} this.items.push({ uuid: null, product: p.uuid, name: p.name, quantity, unit_price: unit, discount_percent: 0, warn: '' }); },
+      async syncItem(idx){ const it = this.items[idx]; if (!it) return; if (this.orderId && !it.uuid) { try { const resp = await Http.fetchJson(`/api/sale/orders/${this.orderId}/add-item/`, { method:'POST', body: JSON.stringify({ product: it.product, quantity: it.quantity, unit_price: it.unit_price, discount_percent: it.discount_percent||0 })}); if (resp && resp.uuid) { this.items[idx].uuid = resp.uuid; } } catch(e){ Http.toast(e.message||'Erro ao adicionar item','error'); return; } } if (!this.orderId || !it.uuid) return; if (this.productStock[it.product] === undefined) { await this.fetchStock(it.product); } const stock = this.productStock[it.product]; const q = parseFloat(it.quantity||0); const stn = parseFloat(stock); if (stock!==null && stock!==undefined && !isNaN(stn) && q>stn) { if (stn <= 0) { Http.toast('Sem estoque','error'); it.warn='Sem estoque'; it.quantity=0; } else { Http.toast('Estoque insuficiente','error'); it.warn='Quantidade ajustada para 1'; it.quantity=1; } try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'PATCH', body: JSON.stringify({ quantity: it.quantity, discount_percent: it.discount_percent||0 })}); } catch(e){} return; } try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'PATCH', body: JSON.stringify({ quantity: it.quantity, discount_percent: it.discount_percent||0 })}); it.warn=''; } catch(e){ Http.toast(e.message||'Erro ao atualizar item','error'); } },
+      removeItem(idx){ const it=this.items[idx]; this.items.splice(idx,1); if (this.orderId && it && it.uuid) { Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'DELETE' }).catch(()=>{}); } },
+      itemsSubtotal(){ return this.items.reduce((s,it)=> s + (parseFloat(it.quantity||0)*parseFloat(it.unit_price||0)), 0); },
+      baseTotal(){ const subtotal = this.items.reduce((s,it)=> s + (parseFloat(it.quantity||0)*parseFloat(it.unit_price||0)*(1-(parseFloat(it.discount_percent||0)/100))), 0); const dPct = Math.max(0, parseFloat(this.orderDiscount||0)||0); const afterPct = subtotal*(1-(dPct/100)); const dAbs = Math.max(0, parseFloat(this.orderDiscountAbs||0)||0); const afterAbs = Math.max(0, afterPct - dAbs); return Math.max(0, afterAbs); },
+      discountApplied(){ const sub=this.itemsSubtotal(); const base=this.baseTotal(); return Math.max(0, sub-base); },
+      feePercent(){ if (!this.isCardCredit()) return 0; const brandId=String(this.cardBrand||''); if (!brandId) return 0; const tiers=(this.cardFees||[]).filter(t=> String(t.brand)===brandId && ((t.type||'').toLowerCase()==='card_credit')); if(!tiers.length) return 0; const n=parseInt(this.installments||1,10)||1; for(const t of tiers){const min=parseInt(t.installments_min||1,10), max=parseInt(t.installments_max||1,10); if(n>=min && n<=max) return parseFloat(t.fee_percent||0)||0;} return 0; },
+      feeValue(){ const pct=this.feePercent(); if(!(pct>0)) return 0; const base=this.baseTotal(); return base*(pct/100); },
+      total(){ return this.baseTotal() + this.feeValue(); },
+      togglePayment(){ this.showPaymentSelect = !this.showPaymentSelect; },
+      paymentMethodName(){ const pm=(this.paymentMethods||[]).find(x=>x.uuid===this.payment_method); return pm ? `Forma: ${pm.name}` : 'Selecionar forma de pagamento'; },
+      sellerDisplay(){ const s=(this.sellers||[]).find(x=>x.uuid===this.seller); if(!s) return '(nÃ£o definido)'; return s.name||'(nÃ£o definido)'; },
+      async finalize(){ if (!Array.isArray(this.items) || this.items.length===0) { Http.toast('Adicione items antes de finalizar','error'); return; } if (!this.customer) { Http.toast('Defina o cliente','error'); return; } if (!this.payment_method) { Http.toast('Defina a forma de pagamento','error'); return; } if (!this.orderId) { try{ await this.ensureOrder(); }catch(e){ Http.toast('Falha ao criar pedido','error'); return; } } if (String(this.orderType||'')==='orcamento') { Http.toast('OrÃ§amento salvo','success'); this.orderStatus='DRAFT'; return; } try { const res = await Http.fetchJson(`/api/sale/orders/${this.orderId}/action/`, { method:'POST', body: JSON.stringify({ action:'confirm' })}); this.confirmedOrderId=this.orderId; this.orderStatus=(res&&res.status)||'CONFIRMED'; this.salesOrder=(res&&res.sales_order)||this.salesOrder; Http.toast('Pedido finalizado','success'); } catch(e){ Http.toast(e.message||'Erro ao confirmar','error'); } },
+      async deleteOrder(){ if (!this.orderId) return; const onConfirm = async ()=>{ try{ await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'DELETE' }); Http.toast('Venda excluÃ­da','success'); this.resetOrder(); }catch(e){ Http.toast(e.message||'Erro ao excluir venda','error'); } }; window.dispatchEvent(new CustomEvent('show-confirm', { detail: { title:'Excluir venda', message:'Tem certeza que deseja excluir esta venda? Esta aÃ§Ã£o nÃ£o pode ser desfeita.', type:'danger', onConfirm } })); },
+      resetOrder(){ this.search=''; this.products=[]; this.items=[]; this.orderId=null; this.confirmedOrderId=''; this.lastInvoice=null; this.productNameCache={}; this.productStock={}; },
+    }
+  }
+</script>
+{% endblock %}
+
+
+
+
+

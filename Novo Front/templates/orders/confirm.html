@@ -1,0 +1,426 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Confirmação do Pedido · MVPSale{% endblock %}
+
+{% block content %}
+
+<div class="no-print">{% include "partials/breadcrumb.html" with b1="Pedidos" b2="Confirmação" %}</div>
+
+<h1 class="text-2xl font-semibold mb-4 no-print">Pedido finalizado</h1>
+
+
+
+<div x-data="orderConfirm()" x-init="init()" class="space-y-4">
+
+  <!-- Aviso para orçamentos -->
+
+  <div x-show="(order.order_type||'')==='orcamento'" class="rounded-xl border border-amber-600/40 bg-amber-900/30 text-amber-200 p-3">
+
+    <div class="flex flex-wrap items-center gap-3">
+
+      <div class="text-sm">Este é um orçamento. Para faturar, confirme o pedido primeiro.</div>
+
+      <div class="ml-auto flex gap-2">
+
+        <button @click="confirmOrder()" class="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white">Confirmar pedido</button>
+
+        <a :href="'/sales?order='+encodeURIComponent(order.uuid||'')" class="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-white">Editar orçamento</a>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
+
+      <div class="text-sm text-slate-400">Cliente</div>
+
+      <div class="text-lg font-medium" x-text="customerName()"></div>
+
+      <div class="text-sm text-slate-400">Vendedor</div>
+
+      <div class="text-base" x-text="sellerName()"></div>
+
+      <div class="text-sm text-slate-400">Criado em</div>
+
+      <div class="text-base" x-text="formatDate(order.created_at)"></div>
+
+    </div>
+
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
+
+      <div class="flex items-center justify-between">
+
+        <div class="text-sm text-slate-400">Pedido</div>
+
+        <div class="text-lg font-semibold" x-text="order.sales_order || order.uuid"></div>
+
+      </div>
+
+      <div class="flex items-center justify-between">
+
+        <div class="text-sm text-slate-400">Status</div>
+
+        <div class="px-2 py-0.5 rounded text-xs" :class="(order.status||'')==='CONFIRMED' ? 'bg-emerald-900 text-emerald-200' : 'bg-slate-800 text-slate-300'" x-text="order.status"></div>
+
+      </div>
+
+      <div class="flex items-center justify-between">
+
+        <div class="text-sm text-slate-400">Forma de pagamento</div>
+
+        <div class="text-base font-medium" x-text="pm?.name || pm?.code || '-' "></div>
+
+      </div>
+
+      <div class="flex items-center justify-between">
+
+        <div class="text-sm text-slate-400">Condição</div>
+
+        <div class="text-base" x-text="paymentCondition()"></div>
+
+      </div>
+
+      <div class="flex items-center justify-between" x-show="brand">
+
+        <div class="text-sm text-slate-400">Bandeira</div>
+
+        <div class="text-base" x-text="brand?.name"></div>
+
+      </div>
+
+      <div class="flex items-center justify-between">
+
+        <div class="text-sm text-slate-400">Taxa/Juros</div>
+
+        <div class="text-base" x-text="feeDisplay()"></div>
+
+      </div>
+
+      <div class="flex items-center justify-between">
+
+        <div class="text-sm text-slate-400">Subtotal</div>
+
+        <div class="text-base font-medium" x-text="money(order.subtotal)"></div>
+
+      </div>
+
+      <div class="flex items-center justify-between">
+
+        <div class="text-sm text-slate-400">Descontos</div>
+
+        <div class="text-base" x-text="money(order.discount_total)"></div>
+
+      </div>
+
+      <div class="flex items-center justify-between border-t border-slate-700 pt-2 mt-2">
+
+        <div class="text-slate-300 font-semibold">Total</div>
+
+        <div class="text-lg font-semibold" x-text="money(order.total)"></div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+
+    <h2 class="font-medium mb-2">Itens</h2>
+
+    <div class="overflow-x-auto">
+
+      <table class="min-w-full text-sm">
+
+        <thead class="bg-slate-800/60">
+
+          <tr>
+
+            <th class="text-left px-3 py-2">Produto</th>
+
+            <th class="text-left px-3 py-2">Qtd</th>
+
+            <th class="text-left px-3 py-2">Unitário</th>
+
+            <th class="text-left px-3 py-2">Desc. %</th>
+
+            <th class="text-left px-3 py-2">Total</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody id="rows">
+
+          <template x-for="it in (order.items||[])" :key="it.uuid">
+
+            <tr>
+
+              <td class="px-3 py-2" x-text="productName(it.product)"></td>
+
+              <td class="px-3 py-2" x-text="Number(it.quantity||0)"></td>
+
+              <td class="px-3 py-2" x-text="money(it.unit_price)"></td>
+
+              <td class="px-3 py-2" x-text="(parseFloat(it.discount_percent||0)).toFixed(2)+'%'"></td>
+
+              <td class="px-3 py-2" x-text="money(it.line_total)"></td>
+
+            </tr>
+
+          </template>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="flex flex-wrap gap-2">
+
+    <template x-if="(order.order_type||'')==='orcamento' && (order.status||'')==='DRAFT' && false">
+      <button @click="window.print()" class="px-3 py-2 rounded bg-slate-600 hover:bg-slate-500 text-white">Imprimir orçamento</button>
+
+    </template>
+
+
+
+    <!-- Mostrar ações de faturamento/cancelamento somente quando confirmado -->
+
+    <template x-if="(order.status||'')==='CONFIRMED'">
+
+      <a :href="'/nfe?order='+encodeURIComponent(order.uuid||'')" target="_blank" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Faturar</a>
+
+    </template>
+
+    <template x-if="(order.status||'')==='CONFIRMED'">
+
+      <button @click="cancelOrder()" class="px-3 py-2 rounded bg-amber-600 hover:bg-amber-500 text-black">Cancelar pedido</button>
+
+    </template>
+
+
+
+    <!-- Editar orçamento quando for orcamento -->
+
+    <template x-if="(order.order_type||'')==='orcamento' && (order.status||'')==='DRAFT'">
+
+    </template>
+
+
+
+    <template x-if="(order.status||'')==='DRAFT' && (order.order_type||'')!=='orcamento'">
+
+      <button @click="reopenAsOrcamento()" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white">Reabrir como orçamento</button>
+
+    </template>
+
+
+
+    <template x-if="(order.status||'')==='DRAFT' && (order.order_type||'')!=='orcamento'">
+
+    </template>
+
+    <a href="/orders" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white">Ver pedidos</a>
+
+    <a href="/sales" class="px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200">Voltar ao PDV</a>
+
+  </div>
+
+</div>
+
+
+
+<script>
+
+  function orderConfirm(){
+
+    return {
+
+      order: {}, customer: null, seller: null, prodCache: {}, pm: null, brand: null,
+
+      qs(name){ try{ const u=new URLSearchParams(location.search); return u.get(name)||''; }catch(e){ return ''; } },
+
+      money(v){ try { return 'R$ ' + (parseFloat(v||0)).toFixed(2); } catch(e){ return 'R$ 0,00'; } },
+
+      formatDate(s){ try { const d=new Date(s); if (isNaN(d.getTime())) return String(s||''); return d.toLocaleString(); } catch(e){ return String(s||''); } },
+
+      productName(uuid){ return this.prodCache[uuid] || ('#'+uuid.slice(0,8)); },
+
+      customerName(){ return (this.customer && (this.customer.name||this.customer.corporate_name)) || '-'; },
+
+      sellerName(){ return (this.seller && this.seller.name) || '-'; },
+
+      paymentCondition(){
+
+        try {
+
+          const t = (this.pm?.type||'').toLowerCase();
+
+          const meta = this.order?.payment_metadata || {};
+
+          if (t === 'card_credit') {
+
+            const n = parseInt(meta.installments||0,10)||0;
+
+            return n>0 ? `${n}x` : 'Parcelado';
+
+          }
+
+          return (this.pm ? 'À vista' : '-')
+
+        } catch(e){ return '-'; }
+
+      },
+
+      feePercentDisplay(){
+
+        const meta = this.order?.payment_metadata || {};
+
+        let pct = meta.fee_percent; if (pct==null) return '-';
+
+        const n = parseFloat(pct); return isNaN(n) ? String(pct) : (n.toFixed(2)+'%');
+
+      },
+
+      feeValueDisplay(){
+
+        const meta = this.order?.payment_metadata || {};
+
+        if (meta.fee_value == null) return '-';
+
+        const n = parseFloat(meta.fee_value);
+
+        if (isNaN(n)) return String(meta.fee_value);
+
+        return this.money(n);
+
+      },
+
+      feeDisplay(){
+
+        const p = this.feePercentDisplay();
+
+        const v = this.feeValueDisplay();
+
+        if (p==='-' && v==='-') return '-';
+
+        if (p!=='-' && v!=='-') return `${p} (${v})`;
+
+        return p!=='-' ? p : v;
+
+      },
+
+      async init(){
+
+        const id = this.qs('id'); if (!id) { Http.toast('Pedido não informado','error'); return; }
+
+        try {
+
+          this.order = await Http.fetchJson(`/api/sale/orders/${id}/`);
+
+        } catch(e){ Http.toast(e.message||'Erro ao carregar pedido','error'); return; }
+
+        try { if (this.order.customer) this.customer = await Http.fetchJson(`/api/people/customers/${this.order.customer}/`); } catch(e){}
+
+        try { if (this.order.seller) this.seller = await Http.fetchJson(`/api/people/sellers/${this.order.seller}/`); } catch(e){}
+
+        try { if (this.order.payment_method) this.pm = await Http.fetchJson(`/api/payment/methods/${this.order.payment_method}/`); } catch(e){}
+
+        try {
+
+          const meta = this.order?.payment_metadata || {};
+
+          if (meta.card_brand != null) this.brand = await Http.fetchJson(`/api/payment/card-brands/${meta.card_brand}/`);
+
+        } catch(e){}
+
+        try {
+
+          const items = this.order.items||[];
+
+          for (const it of items){ if (it && it.product && !this.prodCache[it.product]){ const p = await Http.fetchJson(`/api/catalog/products/${it.product}/`); this.prodCache[it.product] = p?.name || ('#'+String(it.product).slice(0,8)); } }
+
+        } catch(e){}
+
+      },
+
+      async cancelOrder(){
+
+        const id = this.order.uuid; if (!id) return;
+
+        try {
+
+          await Http.fetchJson(`/api/sale/orders/${id}/action/`, { method:'POST', body: JSON.stringify({ action:'cancel' })});
+
+          Http.toast('Pedido cancelado','success');
+
+          this.order.status = 'CANCELLED';
+
+        } catch(e){ Http.toast(e.message||'Erro ao cancelar','error'); }
+
+      },
+
+      async reopenAsOrcamento(){
+
+        const id = this.order.uuid; if (!id) return;
+
+        try {
+
+          await Http.fetchJson(`/api/sale/orders/${id}/`, { method:'PATCH', body: JSON.stringify({ order_type: 'orcamento' })});
+
+          this.order.order_type = 'orcamento';
+
+          Http.toast('Pedido reaberto como orçamento','success');
+
+        } catch(e){ Http.toast(e.message||'Erro ao reabrir como orçamento','error'); }
+
+      },
+
+      async confirmOrder(){
+
+        const id = this.order.uuid; if (!id) return;
+
+        try {
+
+          const res = await Http.fetchJson(`/api/sale/orders/${id}/action/`, { method:'POST', body: JSON.stringify({ action:'confirm' })});
+
+          this.order = res || this.order;
+
+          Http.toast('Pedido confirmado','success');
+
+        } catch(e){ Http.toast(e.message||'Erro ao confirmar pedido','error'); }
+
+      },
+
+    }
+
+  }
+
+</script>
+
+{% endblock %}
+
+
+
+<style>
+  @media print {
+    .no-print, .no-print * { display: none !important; }
+    body { background: #fff; }
+  }
+  /* Hide any leftover emerald edit buttons */
+  a[class*="bg-emerald-700"][class*="hover:bg-emerald-600"][class*="text-white"] { display: none !important; }
+</style>
+
+
+

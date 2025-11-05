@@ -4,11 +4,11 @@
     <h1 class="text-2xl font-semibold tracking-tight">Produtos</h1>
     <p class="text-slate-400 text-sm">Gerencie o catálogo e mantenha os preços atualizados.</p>
   </div>
-  <button id="toggleForm"
-          class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">
+  <a id="toggleForm" href="#new"
+     class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">
     <i data-lucide="plus" class="w-4 h-4"></i>
-    Novo Produto
-  </button>
+    Novo produto
+  </a>
 </div>
 
 <!-- 📦 Formulário de novo produto -->
@@ -144,14 +144,43 @@
     try{
       const p = await Http.fetchJson(`/api/catalog/products/${uuid}/`);
       let catOpts = '', brandOpts = '';
+      // ensure we have category and brand caches to resolve names
+      window._categoriesCache = window._categoriesCache || {};
+      window._brandsCache = window._brandsCache || {};
       try {
         const cats = await Http.fetchJson('/api/catalog/categories/?ordering=name');
-        catOpts = (cats.results||cats||[]).map(c=>`<option value="${c.uuid}" ${String(c.uuid)===String(p.category)?'selected':''}>${c.name}</option>`).join('');
+        const arr = cats.results||cats||[];
+        // populate cache id->name (support uuid or id fields)
+        arr.forEach(c=>{ const key = c.uuid||c.id||c.pk||c.id; try{ window._categoriesCache[key]=c.name; }catch(e){} });
+        // compute current category id (prefer category_detail if provided by API)
+        const currentCategoryId = (p && p.category_detail && typeof p.category_detail === 'object' && p.category_detail !== null)
+          ? (p.category_detail.uuid||p.category_detail.id||p.category_detail)
+          : (p && typeof p.category === 'object' && p.category !== null ? (p.category.uuid||p.category.id||p.category) : (p.category||''));
+        catOpts = arr.map(c=>`<option value="${c.uuid}" ${String(c.uuid)===String(currentCategoryId)?'selected':''}>${c.name}</option>`).join('');
       } catch(e) {}
       try {
         const brands = await Http.fetchJson('/api/catalog/brands/?ordering=name');
-        brandOpts = (brands.results||brands||[]).map(b=>`<option value="${b.uuid}" ${String(b.uuid)===String(p.brand)?'selected':''}>${b.name}</option>`).join('');
+        const arr = brands.results||brands||[];
+        arr.forEach(b=>{ const key = b.uuid||b.id||b.pk||b.id; try{ window._brandsCache[key]=b.name; }catch(e){} });
+        const currentBrandId = (p && p.brand_detail && typeof p.brand_detail === 'object' && p.brand_detail !== null)
+          ? (p.brand_detail.uuid||p.brand_detail.id||p.brand_detail)
+          : (p && typeof p.brand === 'object' && p.brand !== null ? (p.brand.uuid||p.brand.id||p.brand) : (p.brand||''));
+        brandOpts = arr.map(b=>`<option value="${b.uuid}" ${String(b.uuid)===String(currentBrandId)?'selected':''}>${b.name}</option>`).join('');
       } catch(e) {}
+
+      // resolve display names for category and brand
+      let catName = '';
+      try{
+        if(p && p.category_detail && typeof p.category_detail === 'object') catName = p.category_detail.name || p.category_detail.uuid || '';
+        else if(p && p.category && typeof p.category === 'object') catName = p.category.name || p.category.uuid || '';
+        else catName = (window._categoriesCache && window._categoriesCache[p.category]) || p.category || '';
+      }catch(e){ catName = p.category || ''; }
+      let brandName = '';
+      try{
+        if(p && p.brand_detail && typeof p.brand_detail === 'object') brandName = p.brand_detail.name || p.brand_detail.uuid || '';
+        else if(p && p.brand && typeof p.brand === 'object') brandName = p.brand.name || p.brand.uuid || '';
+        else brandName = (window._brandsCache && window._brandsCache[p.brand]) || p.brand || '';
+      }catch(e){ brandName = p.brand || ''; }
 
       detailWrap.innerHTML = `
         <div class="bg-slate-800/40 backdrop-blur-xl border border-slate-700 rounded-2xl p-5 shadow-xl transition">
@@ -168,8 +197,8 @@
             <div class="text-sm">Nome: <span class="text-slate-300">${p.name}</span></div>
             <div class="text-sm">SKU: <span class="text-slate-300">${p.sku||''}</span></div>
             <div class="text-sm">Código de barras: <span class="text-slate-300">${p.barcode||''}</span></div>
-            <div class="text-sm">Categoria: <span class="text-slate-300">${p.category||''}</span></div>
-            <div class="text-sm">Marca: <span class="text-slate-300">${p.brand||''}</span></div>
+            <div class="text-sm">Categoria: <span class="text-slate-300">${catName||''}</span></div>
+            <div class="text-sm">Marca: <span class="text-slate-300">${brandName||''}</span></div>
             <div class="text-sm">Preço custo: <span class="text-slate-300">${p.cost_price||''}</span></div>
             <div class="text-sm">Margem %: <span class="text-slate-300">${p.margin||''}</span></div>
             <div class="text-sm">Preço venda: <span class="text-slate-300">${p.sale_price||''}</span></div>

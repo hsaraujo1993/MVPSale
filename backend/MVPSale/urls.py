@@ -41,11 +41,12 @@ urlpatterns = [
     path("home/", TemplateView.as_view(template_name="home.html")),
     path("catalog", TemplateView.as_view(template_name="catalog.html"), name="catalog"),
     path("nfe", TemplateView.as_view(template_name="nfe.html"), name="nfe"),
-    path("sales", TemplateView.as_view(template_name="sales.html"), name="sales"),
+    path("sales", login_required(TemplateView.as_view(template_name="sales.html")), name="sales"),
 
     # Other gated pages
     path("cashier", login_required(TemplateView.as_view(template_name="cashier.html")), name="cashier"),
     path("orders", login_required(TemplateView.as_view(template_name="orders.html")), name="orders"),
+    path("orders/confirm", login_required(TemplateView.as_view(template_name="orders/confirm.html")), name="orders-confirm"),
     path("payments", login_required(TemplateView.as_view(template_name="payments.html")), name="payments"),
     path("people", login_required(TemplateView.as_view(template_name="people.html")), name="people"),
     path("purchase", login_required(TemplateView.as_view(template_name="purchase.html")), name="purchase"),
@@ -72,4 +73,3 @@ urlpatterns += [
         name="password_change_done",
     ),
 ]
-

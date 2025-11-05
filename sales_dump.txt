@@ -1,0 +1,99 @@
+﻿{% extends "base.html" %}
+{% block title %}PDV Â· MVPSale{% endblock %}
+{% block content %}
+{% include "partials/breadcrumb.html" with b1="Vendas" b2="PDV" %}
+<h1 class="text-2xl font-semibold mb-4">PDV</h1>
+
+<div x-data="pos()" x-init="init()" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-2 space-y-4">
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+      <div class="flex gap-2 items-center"></div><div class="mt-2"><select x-model="payment_method" @change="syncPaymentMethod()" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"><option value="">Selecione</option><template x-for="pm in paymentMethods" :key="pm.uuid"><option :value="pm.uuid" x-text="pm.name"></option></template></select></div><div class="mt-2 space-y-2" x-show="isCardCredit()">
+            <div>
+              <label class="block text-sm mb-1">Bandeira</label>
+              <select x-model="cardBrand" @change="onCardBrandChange()" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+                <option value="">Selecione</option>
+                <template x-for="b in cardBrands" :key="b.id"><option :value="b.id" x-text="b.name"></option></template>
+              </select>
+            </div>
+            <div x-show="availableInstallments().length > 0">
+              <label class="block text-sm mb-1">Parcelas</label>
+              <select x-model.number="installments" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
+                <template x-for="n in availableInstallments()" :key="'parc-'+n"><option :value="n" x-text="installmentLabel(n)"></option></template>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-1">
+        <div class="text-sm">Subtotal: <span x-text="formatMoney(itemsSubtotal())"></span></div>
+        <div class="text-xs text-slate-400"><span class="font-medium">Desconto aplicado:</span> <span x-text="formatMoney(discountApplied())"></span></div>
+        <div class="text-xs text-slate-400"><span class="font-medium">Taxa CartÃ£o (Taxa CartÇœo):</span> <span x-text="(feePercent()||0).toFixed(2)+'%'"></span></div>
+        <div class="text-xs text-slate-400"><span class="font-medium">Valor juros:</span> <span x-text="formatMoney(feeValue())"></span></div>
+        <div class=\"text-lg flex items-center gap-2\"><span>Total:</span><span x-text="formatMoney(total())"></span></div>
+      </div>
+
+      <div class="flex flex-wrap gap-2 items-center">
+        <button @click="finalize()" :disabled="!canFinalize()" :aria-disabled="!canFinalize()" :class="{ 'opacity-50 pointer-events-none': !canFinalize() }" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded px-3 py-2" x-text="orderType==='orcamento' ? 'Salvar orÃ§amento' : 'Finalizar'"></button>
+        <button @click="resetOrder()" class="px-3 py-2 rounded bg-slate-700">Cancelar</button>
+        <template x-if="orderId && (orderStatus||'DRAFT')==='DRAFT'"><button @click="deleteOrder()" class="px-3 py-2 rounded bg-rose-700 hover:bg-rose-600 text-white">Excluir venda</button></template>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function pos(){
+    return {
+      search: '', products: [], items: [], customers: [], sellers: [], orderId: null, customer: '', seller: '',
+      paymentMethods: [], payment_method: '', showPaymentSelect: false, confirmedOrderId: '', lastInvoice: null,
+      cardBrands: [], cardFees: [], cardBrand: '', installments: 1,
+      orderDiscount: 0, orderDiscountAbs: 0,
+      productNameCache: {}, productStock: {},
+      orderType: 'carrinho',
+      orderStatus: 'DRAFT',
+      salesOrder: '',
+      isCardCredit(){ const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method); if(!pm) return false; const t=(pm.type||'').toLowerCase(); const n=(pm.name||'').toLowerCase(); return t==='card_credit' || n.includes('crÃ©dito') || n.includes('credito'); },
+      formatMoney(v){ try { return 'R$ ' + (parseFloat(v)||0).toFixed(2); } catch(e) { return 'R$ 0,00'; } },
+      formatQty(v){ const n = parseFloat(v); if (isNaN(n)) return '-'; return Math.round(n).toString(); },
+      async init(){
+        try { const cs = await Http.fetchJson('/api/people/customers/?ordering=name'); this.customers = cs.results||cs||[]; } catch(e){}
+        try { const ss = await Http.fetchJson('/api/people/sellers/?ordering=name'); this.sellers = ss.results||ss||[]; } catch(e){}
+        try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e){}
+        try { const pms = await Http.fetchJson('/api/payment/methods/?ordering=name'); this.paymentMethods = pms.results||pms||[]; } catch(e){}
+        try { const brands = await Http.fetchJson('/api/payment/card-brands/?ordering=name'); this.cardBrands = brands.results||brands||[]; } catch(e){}
+        try { const fees = await Http.fetchJson('/api/payment/card-fees/?type=card_credit'); this.cardFees = fees.results||fees||[]; } catch(e){}
+      },
+      async loadProducts(){
+        const p = new URLSearchParams(); if (this.search && this.search.trim().length >= 2) p.set('search', this.search.trim()); else { this.products=[]; return; } p.set('ordering','name');
+        try { const data = await Http.fetchJson(`/api/catalog/products/?${p.toString()}`); this.products = (data && (data.results||data)) || []; (this.products||[]).forEach(pr=>{ if (pr && pr.uuid) this.productNameCache[pr.uuid] = pr.name; }); } catch(e){ Http.toast(e.message||'Erro ao carregar produtos','error'); }
+      },
+      async fetchStock(uuid){ try { const st = await Http.fetchJson(`/api/stock/?product__uuid=${uuid}`); const rows = st.results||st||[]; const q = (rows[0] && rows[0].quantity_current) || 0; this.$nextTick(()=>{ this.productStock[uuid] = q; }); } catch(e){ this.productStock[uuid] = null; } },
+      async ensureOrder(){ if (this.orderId) return; const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method)||null; const payment_metadata = pm ? { uuid: pm.uuid, name: pm.name, type: pm.type } : null; if (!this.seller) { try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e){} } if (!this.seller) throw new Error('Defina um vendedor antes de criar o pedido.'); const created = await Http.fetchJson('/api/sale/orders/', { method:'POST', body: JSON.stringify({ customer: this.customer||null, seller: this.seller||null, payment_method: this.payment_method||null, order_type: this.orderType, order_discount_abs: parseFloat(this.orderDiscountAbs||0), payment_metadata })}); if (!created || !created.uuid) throw new Error('Falha ao criar pedido'); this.orderId = created.uuid; this.orderStatus = created.status||'DRAFT'; },
+      async addItem(p){ try { if (!this.orderId) await this.ensureOrder(); } catch(e){} const unit = parseFloat(p.sale_price||0)||0; const quantity=1; const st = this.productStock[p.uuid]; if (st!==undefined && st!==null && parseFloat(st)<=0) { Http.toast('Produto sem estoque','error'); return; } try { const resp = await Http.fetchJson(`/api/sale/orders/${this.orderId}/add-item/`, { method:'POST', body: JSON.stringify({ product: p.uuid, quantity, unit_price: unit })}); if (resp && resp.uuid) { this.items.push({ uuid: resp.uuid, product: p.uuid, name: p.name, quantity, unit_price: unit, discount_percent: 0, warn: '' }); return; } } catch(e){} this.items.push({ uuid: null, product: p.uuid, name: p.name, quantity, unit_price: unit, discount_percent: 0, warn: '' }); },
+      async syncItem(idx){ const it = this.items[idx]; if (!it) return; if (this.orderId && !it.uuid) { try { const resp = await Http.fetchJson(`/api/sale/orders/${this.orderId}/add-item/`, { method:'POST', body: JSON.stringify({ product: it.product, quantity: it.quantity, unit_price: it.unit_price, discount_percent: it.discount_percent||0 })}); if (resp && resp.uuid) { this.items[idx].uuid = resp.uuid; } } catch(e){ Http.toast(e.message||'Erro ao adicionar item','error'); return; } } if (!this.orderId || !it.uuid) return; if (this.productStock[it.product] === undefined) { await this.fetchStock(it.product); } const stock = this.productStock[it.product]; const q = parseFloat(it.quantity||0); const stn = parseFloat(stock); if (stock!==null && stock!==undefined && !isNaN(stn) && q>stn) { if (stn <= 0) { Http.toast('Sem estoque','error'); it.warn='Sem estoque'; it.quantity=0; } else { Http.toast('Estoque insuficiente','error'); it.warn='Quantidade ajustada para 1'; it.quantity=1; } try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'PATCH', body: JSON.stringify({ quantity: it.quantity, discount_percent: it.discount_percent||0 })}); } catch(e){} return; } try { await Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'PATCH', body: JSON.stringify({ quantity: it.quantity, discount_percent: it.discount_percent||0 })}); it.warn=''; } catch(e){ Http.toast(e.message||'Erro ao atualizar item','error'); } },
+      removeItem(idx){ const it=this.items[idx]; this.items.splice(idx,1); if (this.orderId && it && it.uuid) { Http.fetchJson(`/api/sale/orders/${this.orderId}/items/${it.uuid}/`, { method:'DELETE' }).catch(()=>{}); } },
+      itemsSubtotal(){ return this.items.reduce((s,it)=> s + (parseFloat(it.quantity||0)*parseFloat(it.unit_price||0)), 0); },
+      baseTotal(){ const subtotal = this.items.reduce((s,it)=> s + (parseFloat(it.quantity||0)*parseFloat(it.unit_price||0)*(1-(parseFloat(it.discount_percent||0)/100))), 0); const dPct = Math.max(0, parseFloat(this.orderDiscount||0)||0); const afterPct = subtotal*(1-(dPct/100)); const dAbs = Math.max(0, parseFloat(this.orderDiscountAbs||0)||0); const afterAbs = Math.max(0, afterPct - dAbs); return Math.max(0, afterAbs); },
+      discountApplied(){ const sub=this.itemsSubtotal(); const base=this.baseTotal(); return Math.max(0, sub-base); },
+      feePercent(){ if (!this.isCardCredit()) return 0; const brandId=String(this.cardBrand||''); if (!brandId) return 0; const tiers=(this.cardFees||[]).filter(t=> String(t.brand)===brandId && ((t.type||'').toLowerCase()==='card_credit')); if(!tiers.length) return 0; const n=parseInt(this.installments||1,10)||1; for(const t of tiers){const min=parseInt(t.installments_min||1,10), max=parseInt(t.installments_max||1,10); if(n>=min && n<=max) return parseFloat(t.fee_percent||0)||0;} return 0; },
+      feeValue(){ const pct=this.feePercent(); if(!(pct>0)) return 0; const base=this.baseTotal(); return base*(pct/100); },
+      total(){ return this.baseTotal() + this.feeValue(); },
+      togglePayment(){ this.showPaymentSelect = !this.showPaymentSelect; },
+      paymentMethodName(){ const pm=(this.paymentMethods||[]).find(x=>x.uuid===this.payment_method); return pm ? `Forma: ${pm.name}` : 'Selecionar forma de pagamento'; },
+      sellerDisplay(){ const s=(this.sellers||[]).find(x=>x.uuid===this.seller); if(!s) return '(nÃ£o definido)'; return s.name||'(nÃ£o definido)'; },
+      async finalize(){ if (!Array.isArray(this.items) || this.items.length===0) { Http.toast('Adicione items antes de finalizar','error'); return; } if (!this.customer) { Http.toast('Defina o cliente','error'); return; } if (!this.payment_method) { Http.toast('Defina a forma de pagamento','error'); return; } if (!this.orderId) { try{ await this.ensureOrder(); }catch(e){ Http.toast('Falha ao criar pedido','error'); return; } } if (String(this.orderType||'')==='orcamento') { Http.toast('OrÃ§amento salvo','success'); this.orderStatus='DRAFT'; return; } try { const res = await Http.fetchJson(`/api/sale/orders/${this.orderId}/action/`, { method:'POST', body: JSON.stringify({ action:'confirm' })}); this.confirmedOrderId=this.orderId; this.orderStatus=(res&&res.status)||'CONFIRMED'; this.salesOrder=(res&&res.sales_order)||this.salesOrder; Http.toast('Pedido finalizado','success'); } catch(e){ Http.toast(e.message||'Erro ao confirmar','error'); } },
+      async deleteOrder(){ if (!this.orderId) return; const onConfirm = async ()=>{ try{ await Http.fetchJson(`/api/sale/orders/${this.orderId}/`, { method:'DELETE' }); Http.toast('Venda excluÃ­da','success'); this.resetOrder(); }catch(e){ Http.toast(e.message||'Erro ao excluir venda','error'); } }; window.dispatchEvent(new CustomEvent('show-confirm', { detail: { title:'Excluir venda', message:'Tem certeza que deseja excluir esta venda? Esta aÃ§Ã£o nÃ£o pode ser desfeita.', type:'danger', onConfirm } })); },
+      resetOrder(){ this.search=''; this.products=[]; this.items=[]; this.orderId=null; this.confirmedOrderId=''; this.lastInvoice=null; this.productNameCache={}; this.productStock={}; },
+    }
+  }
+</script>
+{% endblock %}
+
+
+
+
+
+
+
+

@@ -123,14 +123,19 @@ if (!window.__catInit) {
           <td class="px-3 py-2 font-medium">${c.name}</td>
           <td class="px-3 py-2">${c.slug||''}</td>
           <td class="px-3 py-2">${c.active ? '<span class="text-emerald-400 font-medium">Sim</span>' : '<span class="text-slate-500">Não</span>'}</td>
-          <td class="px-3 py-2">
+          <td class="px-3 py-2 space-x-3">
             <button class="text-sky-400 hover:underline" data-view="${c.uuid}">Visualizar</button>
+            <button class="text-rose-400 hover:underline" data-del="${c.uuid}" data-name="${c.name}">Excluir</button>
           </td>`;
         rowsCat.appendChild(tr);
       });
       rowsCat.querySelectorAll('[data-view]').forEach(btn=>
         btn.addEventListener('click', ()=> viewCat(btn.dataset.view))
       );
+      // attach delete handlers on list buttons
+      rowsCat.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.addEventListener('click', ()=> delCat(btn.dataset.del, btn.dataset.name));
+      });
       sc.next=data.next; sc.previous=data.previous;
       pageInfoCat.textContent = `Página ${sc.page}`;
     } catch(err){
@@ -142,6 +147,17 @@ if (!window.__catInit) {
   const detailWrap = document.createElement('div');
   detailWrap.className = 'mt-6';
   rowsCat.parentElement.parentElement.after(detailWrap);
+
+  // Deletar categoria diretamente da listagem
+  async function delCat(uuid, name){
+    UI.confirm(`Excluir categoria "${name||''}"?`, async ()=>{
+      try {
+        await Http.fetchJson(`/api/catalog/categories/${uuid}/`, { method:'DELETE' });
+        Http.toast('Categoria excluída','success');
+        loadCat();
+      } catch(err){ Http.toast(err.message||'Erro ao excluir','error'); }
+    }, 'Excluir', 'danger');
+  }
 
   async function viewCat(uuid){
     try {

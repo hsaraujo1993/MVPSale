@@ -21,6 +21,9 @@ class ProductSerializer(serializers.ModelSerializer):
     # accept category/brand by uuid on input while keeping uuid in representation
     category = serializers.SlugRelatedField(slug_field='uuid', queryset=Category.objects.all())
     brand = serializers.SlugRelatedField(slug_field='uuid', queryset=Brand.objects.all())
+    # include nested details for frontend convenience
+    category_detail = CategorySerializer(source='category', read_only=True)
+    brand_detail = BrandSerializer(source='brand', read_only=True)
 
     class Meta:
         model = Product
@@ -30,7 +33,9 @@ class ProductSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "category",
+            "category_detail",
             "brand",
+            "brand_detail",
             "cost_price",
             "margin",
             "sale_price",

@@ -1,7 +1,4 @@
-{% extends "base.html" %}
-{% block title %}Notas de Fornecedor — MVPSale{% endblock %}
-{% block content %}
-{% include "partials/breadcrumb.html" with b1="NFe" b2="Notas de Fornecedor" %}
+<!-- Fragmento incluído por nfe.html; não estende base para evitar duplicação de layout -->
 <h1 class="text-2xl font-semibold mb-4">Notas de Fornecedor</h1>
 
 <div class="flex flex-wrap items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 mb-4 backdrop-blur-sm">
@@ -108,4 +105,3 @@
 </script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>try{lucide.createIcons();}catch(e){}</script>
-{% endblock %}

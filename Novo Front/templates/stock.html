@@ -24,7 +24,7 @@
   <table class="min-w-full text-sm border-separate border-spacing-0">
     <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs">
       <tr>
-        <th class="text-left px-3 py-2 font-medium">Produto</th>
+        <th class="text-left px-3 py-2 font-medium">Produto (SKU)</th>
         <th class="text-left px-3 py-2 font-medium">Qtd Atual</th>
         <th class="text-left px-3 py-2 font-medium">Mínimo</th>
         <th class="text-left px-3 py-2 font-medium">Máximo</th>
@@ -68,12 +68,21 @@
         try{
           const p = await Http.fetchJson(`/api/catalog/products/${id}/`);
           const n = p && p.name ? p.name : String(id);
-          nameCache.set(id, n); return n;
+          const sku = p && p.sku ? p.sku : '';
+          const label = sku ? `${sku} — ${n}` : n;
+          nameCache.set(id, label); return label;
         }catch(e){ nameCache.set(id, String(id)); return String(id); }
       }
       for (const s of results){
         const tr = document.createElement('tr');
-        const prodName = await getName(s.product);
+        // prefer API-provided fields to avoid N+1 requests
+        const sku = s.product_sku || '';
+        const pname = s.product_name || '';
+        let prodName = '';
+        if (pname && sku) prodName = `${sku} — ${pname}`;
+        else if (pname) prodName = pname;
+        else if (sku) prodName = sku;
+        else prodName = await getName(s.product);
         tr.innerHTML = `
           <td class="px-3 py-2">${prodName}</td>
           <td class="px-3 py-2">${s.quantity_current}</td>
@@ -96,7 +105,17 @@
     try{
       const s = await Http.fetchJson(`/api/stock/${uuid}/`);
       let prodName = String(s.product);
-      try { const p = await Http.fetchJson(`/api/catalog/products/${s.product}/`); prodName = p?.name || prodName; } catch(e){}
+      try {
+        // prefer stock serializer metadata
+        if (s.product_name || s.product_sku){
+          const name = s.product_name || String(s.product);
+          prodName = s.product_sku ? `${s.product_sku} — ${name}` : name;
+        } else {
+          const p = await Http.fetchJson(`/api/catalog/products/${s.product}/`);
+          const name = p?.name || prodName;
+          prodName = p?.sku ? `${p.sku} — ${name}` : name;
+        }
+      } catch(e){}
       detailWrapS.innerHTML = `
         <div class=\"bg-slate-800/50 border border-slate-700 rounded-xl p-4\">
           <div class=\"flex items-center justify-between mb-3\">

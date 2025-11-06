@@ -25,7 +25,7 @@ def get_open_session() -> CashierSession | None:
 class CashierSessionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = CashierSession.objects.all().order_by("-opened_at")
     serializer_class = CashierSessionSerializer
-    lookup_field = "uuid"
+    lookup_field = "pk"
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -74,9 +74,9 @@ class CashierSessionViewSet(viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(request=CloseSessionSerializer, tags=["cashier"], summary="Fechar caixa")
     @action(detail=True, methods=["post"], url_path="close")
-    def close(self, request, uuid=None):
+    def close(self, request, pk=None):
         try:
-            sess = CashierSession.objects.get(uuid=uuid)
+            sess = CashierSession.objects.get(pk=pk)
         except CashierSession.DoesNotExist:
             return Response({"detail": "Sessão não encontrada."}, status=status.HTTP_404_NOT_FOUND)
         if sess.status != "OPEN":

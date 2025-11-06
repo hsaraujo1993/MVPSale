@@ -25,7 +25,7 @@ logger = logging.getLogger("payment")
 class PaymentMethodViewSet(viewsets.ModelViewSet):
     queryset = PaymentMethod.objects.all().order_by("name")
     serializer_class = PaymentMethodSerializer
-    lookup_field = "uuid"
+    lookup_field = "pk"
     permission_classes = [IsAuthenticatedOrReadOnly]
     from django_filters.rest_framework import DjangoFilterBackend
     from rest_framework import filters as drf_filters
@@ -52,7 +52,7 @@ class PaymentMethodViewSet(viewsets.ModelViewSet):
 class ReceivableViewSet(viewsets.ModelViewSet):
     queryset = Receivable.objects.select_related("method").all().order_by("-created_at")
     serializer_class = ReceivableSerializer
-    lookup_field = "uuid"
+    lookup_field = "pk"
     permission_classes = [IsAuthenticatedOrReadOnly]
     from django_filters.rest_framework import DjangoFilterBackend
     from rest_framework import filters as drf_filters

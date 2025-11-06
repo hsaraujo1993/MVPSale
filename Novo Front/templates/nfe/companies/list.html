@@ -1,0 +1,264 @@
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Emitentes</h1>
+    <p class="text-slate-400 text-sm">Gerencie os emitentes (Company) utilizados para emissão de NF-e.</p>
+  </div>
+  <a href="#" id="toggleNewCompany" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">Nova Emitente</a>
+</div>
+
+<div id="newCompanyWrap" class="hidden mb-4 bg-slate-800/50 border border-slate-700 rounded-2xl p-4">
+  <form id="newCompanyForm" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+    <div class="md:col-span-2">
+      <label for="company-cnpj" class="sr-only">CNPJ</label>
+      <label class="block text-sm mb-1">CNPJ</label>
+      <input id="company-cnpj" name="cnpj" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" required />
+    </div>
+    <div class="md:col-span-2">
+      <label class="block text-sm mb-1">Razão Social</label>
+      <input id="company-razao" name="razao_social" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" required />
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Nome Fantasia</label>
+      <input id="company-fantasia" name="nome_fantasia" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+
+    <div class="md:col-span-2">
+      <label class="block text-sm mb-1">Regime Tributário</label>
+      <input id="company-regime" name="regime_tributario" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label class="block text-sm mb-1">IE</label>
+      <input id="company-ie" name="ie" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+
+    <div class="md:col-span-2">
+      <label class="block text-sm mb-1">Logradouro</label>
+      <input id="company-address" name="logradouro" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Número</label>
+      <input name="numero" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Bairro</label>
+      <input id="company-neighborhood" name="bairro" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Cidade</label>
+      <input id="company-city" name="cidade" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+    </div>
+    <div>
+      <label class="block text-sm mb-1">UF</label>
+      <input id="company-uf" name="uf" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" maxlength="2" />
+    </div>
+    <div>
+      <label class="block text-sm mb-1">CEP</label>
+      <div class="flex items-center gap-2">
+        <input id="company-cep" name="cep" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
+        <button id="company-cep-lookup" type="button" class="px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded">Buscar CEP</button>
+      </div>
+    </div>
+
+    <div class="md:col-span-6">
+      <button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Salvar</button>
+    </div>
+  </form>
+  <hr class="my-3 border-slate-700" />
+</div>
+
+<div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+  <table class="min-w-full text-sm border-separate border-spacing-0">
+    <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs">
+      <tr>
+        <th class="text-left px-3 py-2 font-medium">CNPJ</th>
+        <th class="text-left px-3 py-2 font-medium">Razão Social</th>
+        <th class="text-left px-3 py-2 font-medium">Nome Fantasia</th>
+        <th class="text-left px-3 py-2 font-medium">Cidade / UF</th>
+        <th class="text-left px-3 py-2 font-medium">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="rowsCompanies" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition"></tbody>
+  </table>
+</div>
+
+<div class="mt-4 flex items-center gap-2 text-sm">
+  <button id="prevCompanies" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">← Anterior</button>
+  <span id="pageInfoCompanies" class="text-slate-400 min-w-[80px] text-center"></span>
+  <button id="nextCompanies" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Próxima →</button>
+</div>
+
+<script>
+  const sComp = { page:1, q:'', ordering:'razao_social', next:null, previous:null };
+  const rowsC = document.getElementById('rowsCompanies');
+  const toggleNewCompany = document.getElementById('toggleNewCompany');
+  const newCompanyWrap = document.getElementById('newCompanyWrap');
+  const newCompanyForm = document.getElementById('newCompanyForm');
+  const prevC = document.getElementById('prevCompanies');
+  const nextC = document.getElementById('nextCompanies');
+  const pageInfoC = document.getElementById('pageInfoCompanies');
+
+  toggleNewCompany?.addEventListener('click', (e)=>{ e.preventDefault(); newCompanyWrap.classList.toggle('hidden'); });
+  prevC?.addEventListener('click', ()=>{ if(sComp.previous){ sComp.page--; loadCompanies(); }});
+  nextC?.addEventListener('click', ()=>{ if(sComp.next){ sComp.page++; loadCompanies(); }});
+
+  newCompanyForm?.addEventListener('submit', async (e)=>{
+    e.preventDefault(); const form = e.currentTarget || e.target; const submitBtn = form.querySelector('button[type="submit"], button'); FormUtils.clearFieldErrors(form); FormUtils.setLoading(submitBtn, true); const fd=new FormData(form);
+    const payload = {
+      cnpj: fd.get('cnpj'), ie: fd.get('ie'), regime_tributario: fd.get('regime_tributario'),
+      razao_social: fd.get('razao_social'), nome_fantasia: fd.get('nome_fantasia'), logradouro: fd.get('logradouro'),
+      numero: fd.get('numero'), bairro: fd.get('bairro'), cidade: fd.get('cidade'), uf: fd.get('uf'), cep: fd.get('cep')
+    };
+    try{ await Http.fetchJson('/api/nfe/companies/', { method:'POST', body: JSON.stringify(payload)}); Http.toast('Emitente criado','success'); if(form && typeof form.reset === 'function') form.reset(); newCompanyWrap.classList.add('hidden'); loadCompanies(); }
+    catch(err){ if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message||'Erro ao criar emitente','error'); }
+    finally{ FormUtils.setLoading(submitBtn, false); }
+  });
+
+  async function loadCompanies(){
+    const params = new URLSearchParams(); params.set('page', sComp.page); if(sComp.ordering) params.set('ordering', sComp.ordering);
+    try{
+      const data = await Http.fetchJson(`/api/nfe/companies/?${params}`);
+      rowsC.innerHTML = '';
+      // se não houver emitentes, abrir o formulário de criação automaticamente
+      const results = data.results || [];
+      if ((results.length || 0) === 0) {
+        // esconder lista/pagination e abrir o form para criar o único emitente
+        rowsC.parentElement.parentElement.classList.remove('hidden');
+        newCompanyWrap.classList.remove('hidden');
+        pageInfoC.textContent = '';
+        return;
+      }
+
+      // se houver exatamente 1 emitente no sistema, mostrar o detalhe direto (único emissor)
+      if ((results.length || 0) === 1) {
+        // ocultar a tabela e paginador para expor o painel de detalhe
+        rowsC.parentElement.parentElement.classList.add('hidden');
+        document.getElementById('prevCompanies')?.classList.add('hidden');
+        document.getElementById('nextCompanies')?.classList.add('hidden');
+        pageInfoC.textContent = '';
+        // mostrar detalhe
+        await viewCompany(results[0].uuid);
+        return;
+      }
+
+      (data.results||[]).forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-3 py-2">${r.cnpj||''}</td>
+          <td class="px-3 py-2">${r.razao_social||''}</td>
+          <td class="px-3 py-2">${r.nome_fantasia||''}</td>
+          <td class="px-3 py-2">${r.cidade||''} / ${r.uf||''}</td>
+          <td class="px-3 py-2"><button class="text-sky-400 hover:underline" data-view="${r.uuid}">Visualizar</button></td>`;
+        rowsC.appendChild(tr);
+      });
+      rowsC.querySelectorAll('[data-view]').forEach(btn=> btn.addEventListener('click', ()=> viewCompany(btn.dataset.view)));
+      sComp.next = data.next; sComp.previous = data.previous; pageInfoC.textContent = `Página ${sComp.page}`;
+    }catch(err){ Http.toast(err.message||'Erro ao carregar emitentes','error'); }
+  }
+
+  // Painel de detalhe / editar / deletar
+  const detailWrapComp = document.createElement('div');
+  detailWrapComp.className = 'mt-4';
+  rowsC.parentElement.parentElement.after(detailWrapComp);
+
+  async function viewCompany(uuid){
+    try{
+      const r = await Http.fetchJson(`/api/nfe/companies/${uuid}/`);
+      detailWrapComp.innerHTML = `
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">Detalhe do Emitente</h3>
+            <div class="space-x-2">
+              <button id="editComp" class="px-3 py-1 rounded bg-slate-700">Editar</button>
+              <button id="delComp" class="px-3 py-1 rounded bg-rose-600 text-white">Deletar</button>
+              <button id="closeComp" class="px-3 py-1 rounded bg-slate-700">Voltar</button>
+            </div>
+          </div>
+          <div id="compView" class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+            <div>CNPJ: <span>${r.cnpj||''}</span></div>
+            <div>Razão: <span>${r.razao_social||''}</span></div>
+            <div>Fantasia: <span>${r.nome_fantasia||''}</span></div>
+            <div>IE: <span>${r.ie||''}</span></div>
+            <div>Regime: <span>${r.regime_tributario||''}</span></div>
+            <div>Endereço: <span>${r.logradouro||''} ${r.numero||''} ${r.bairro||''} - ${r.cidade||''}/${r.uf||''} ${r.cep||''}</span></div>
+          </div>
+
+          <form id="compEdit" class="hidden grid grid-cols-1 md:grid-cols-6 gap-3 mt-2">
+            <div class="md:col-span-2"><label class="block text-sm mb-1">CNPJ</label><input name="cnpj" value="${r.cnpj||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div class="md:col-span-2"><label class="block text-sm mb-1">Razão Social</label><input name="razao_social" value="${r.razao_social||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Nome Fantasia</label><input name="nome_fantasia" value="${r.nome_fantasia||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Regime Tributário</label><input name="regime_tributario" value="${r.regime_tributario||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">IE</label><input name="ie" value="${r.ie||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div class="md:col-span-2"><label class="block text-sm mb-1">Logradouro</label><input id="comp-edit-address" name="logradouro" value="${r.logradouro||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Número</label><input name="numero" value="${r.numero||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Bairro</label><input id="comp-edit-neighborhood" name="bairro" value="${r.bairro||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">Cidade</label><input id="comp-edit-city" name="cidade" value="${r.cidade||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">UF</label><input id="comp-edit-uf" name="uf" value="${r.uf||''}" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" maxlength="2"/></div>
+            <div><label class="block text-sm mb-1">CEP</label><div class="flex items-center gap-2"><input id="comp-edit-cep" name="cep" value="${r.cep||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/><button id="comp-edit-cep-lookup" type="button" class="px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded">Buscar CEP</button></div></div>
+
+            <div class="md:col-span-6"><button class="bg-emerald-600 hover:bg-emerald-500 transition text-white rounded px-3 py-2">Salvar</button></div>
+          </form>
+        </div>`;
+
+      detailWrapComp.scrollIntoView({behavior:'smooth'});
+      document.getElementById('closeComp').onclick = ()=> detailWrapComp.innerHTML='';
+      document.getElementById('editComp').onclick = ()=>{ document.getElementById('compView').classList.add('hidden'); document.getElementById('compEdit').classList.remove('hidden'); };
+      document.getElementById('delComp').onclick = ()=> UI.confirm(`Excluir emitente "${r.razao_social||''}"?`, async ()=>{ try{ await Http.fetchJson(`/api/nfe/companies/${uuid}/`, { method:'DELETE' }); Http.toast('Excluído','success'); detailWrapComp.innerHTML=''; loadCompanies(); }catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } }, 'Excluir', 'danger');
+
+      document.getElementById('compEdit').onsubmit = async (e)=>{
+        e.preventDefault(); const fd=new FormData(e.currentTarget); const payload = {};
+        ['cnpj','ie','regime_tributario','razao_social','nome_fantasia','logradouro','numero','bairro','cidade','uf','cep'].forEach(k=>{ const v=fd.get(k); if (v!==null) payload[k]=v; });
+        try{ await Http.fetchJson(`/api/nfe/companies/${uuid}/`, { method:'PATCH', body: JSON.stringify(payload)}); Http.toast('Atualizado','success'); detailWrapComp.innerHTML=''; loadCompanies(); }
+        catch(err){ Http.toast(err.message||'Erro ao atualizar','error'); }
+      };
+
+    }catch(err){ Http.toast(err.message||'Erro ao carregar detalhe','error'); }
+  }
+
+  loadCompanies();
+
+  // CEP lookup for companies (reuse API endpoint used by customers)
+  async function lookupCepAndFillCompany(cep, targetPrefix='company'){
+    if(!cep) { Http.toast('Informe o CEP','warn'); return; }
+    try{
+      // reuse same endpoint as customers which returns address normalized
+      const data = await Http.fetchJson(`/api/people/customers/cep/?cep=${encodeURIComponent(cep)}`);
+      if(!data) { Http.toast('CEP não encontrado','error'); return; }
+      const addrEl = document.getElementById(`${targetPrefix}-address`);
+      const cityEl = document.getElementById(`${targetPrefix}-city`);
+      const ufEl = document.getElementById(`${targetPrefix}-uf`);
+      const cepEl = document.getElementById(`${targetPrefix}-cep`);
+      const neighborhoodEl = document.getElementById(`${targetPrefix}-neighborhood`);
+      if(cepEl) cepEl.value = data.cep || cep;
+      if(addrEl) addrEl.value = data.address || '';
+      if(cityEl) cityEl.value = data.city || '';
+      if(ufEl) ufEl.value = data.uf || '';
+      if(neighborhoodEl) neighborhoodEl.value = data.neighborhood || '';
+      Http.toast('Endereço preenchido pelo CEP','success');
+    }catch(err){ Http.toast(err.message||'Erro ao buscar CEP','error'); }
+  }
+
+  // attach handler for new-company CEP button
+  document.getElementById('company-cep-lookup')?.addEventListener('click', ()=>{
+    const cepVal = document.getElementById('company-cep')?.value || '';
+    lookupCepAndFillCompany(cepVal,'company');
+  });
+
+  // attach handler for edit CEP button inside dynamic detail panel
+  function attachCompEditCepHandler(){
+    const btn = document.getElementById('comp-edit-cep-lookup');
+    if(btn){
+      btn.addEventListener('click', ()=>{
+        const cepVal = document.getElementById('comp-edit-cep')?.value || '';
+        lookupCepAndFillCompany(cepVal,'comp-edit');
+      });
+    }
+  }
+
+  // ensure handler attached after dynamic detail is rendered
+  const originalViewCompany = viewCompany;
+  viewCompany = async function(uuid){
+    await originalViewCompany(uuid);
+    attachCompEditCepHandler();
+  }
+
+</script>

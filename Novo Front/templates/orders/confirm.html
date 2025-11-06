@@ -198,9 +198,7 @@
     <!-- Mostrar ações de faturamento/cancelamento somente quando confirmado -->
 
     <template x-if="(order.status||'')==='CONFIRMED'">
-
-      <a :href="'/nfe?order='+encodeURIComponent(order.uuid||'')" target="_blank" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Faturar</a>
-
+      <button @click="emitInvoice()" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Faturar</button>
     </template>
 
     <template x-if="(order.status||'')==='CONFIRMED'">
@@ -281,6 +279,20 @@
 
         } catch(e){ return '-'; }
 
+      },
+
+      async emitInvoice(){
+        try {
+          const id = this.order?.uuid; if(!id){ Http.toast('Pedido inválido', 'error'); return; }
+          const resp = await Http.fetchJson(`/api/nfe/invoices/from-order/${id}/`, { method:'POST' });
+          Http.toast('NF-e solicitada', 'success');
+          try{
+            const danfe = resp && resp.danfe_url; if (danfe) { window.open(danfe, '_blank'); }
+          }catch(e){}
+          try{ window.location.href = '/nfe?tab=issued'; }catch(e){}
+        } catch(err){
+          Http.toast(err?.message || 'Falha ao emitir NF-e', 'error');
+        }
       },
 
       feePercentDisplay(){

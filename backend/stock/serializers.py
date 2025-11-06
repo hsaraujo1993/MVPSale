@@ -14,6 +14,7 @@ class StockSerializer(serializers.ModelSerializer):
     class Meta:
         model = Stock
         fields = [
+            "id",
             "uuid",
             "product",
             "product_name",
@@ -25,15 +26,15 @@ class StockSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["uuid", "quantity_current", "status", "created_at", "updated_at"]
+        read_only_fields = ["id", "uuid", "quantity_current", "status", "created_at", "updated_at"]
 
-    def get_product_name(self, obj):
+    def get_product_name(self, obj) -> str | None:
         try:
             return getattr(obj.product, 'name', None) or None
         except Exception:
             return None
 
-    def get_product_sku(self, obj):
+    def get_product_sku(self, obj) -> str | None:
         try:
             return getattr(obj.product, 'sku', None) or None
         except Exception:
@@ -46,6 +47,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
     class Meta:
         model = StockMovement
         fields = [
+            "id",
             "uuid",
             "product",
             "type",
@@ -55,7 +57,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["uuid", "created_at", "updated_at"]
+        read_only_fields = ["id", "uuid", "created_at", "updated_at"]
 
     def validate(self, attrs):
         product = attrs.get("product")

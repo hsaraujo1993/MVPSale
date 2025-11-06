@@ -5,22 +5,23 @@ from .models import Category, Brand, Product, Promotion
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ["uuid", "name", "slug", "active", "created_at", "updated_at"]
-        read_only_fields = ["uuid", "slug", "created_at", "updated_at"]
+        # Incluir campo "id" para compatibilidade com testes/clients que esperam PK numérica
+        fields = ["id", "uuid", "name", "slug", "active", "created_at", "updated_at"]
+        read_only_fields = ["id", "uuid", "slug", "created_at", "updated_at"]
 
 
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
-        fields = ["uuid", "name", "active", "created_at", "updated_at"]
-        read_only_fields = ["uuid", "created_at", "updated_at"]
+        fields = ["id", "uuid", "name", "active", "created_at", "updated_at"]
+        read_only_fields = ["id", "uuid", "created_at", "updated_at"]
 
 
 class ProductSerializer(serializers.ModelSerializer):
     sale_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    # accept category/brand by uuid on input while keeping uuid in representation
-    category = serializers.SlugRelatedField(slug_field='uuid', queryset=Category.objects.all())
-    brand = serializers.SlugRelatedField(slug_field='uuid', queryset=Brand.objects.all())
+    # Aceitar category/brand por ID numérico (Primary Key) para alinhar com os testes
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    brand = serializers.PrimaryKeyRelatedField(queryset=Brand.objects.all())
     # include nested details for frontend convenience
     category_detail = CategorySerializer(source='category', read_only=True)
     brand_detail = BrandSerializer(source='brand', read_only=True)
@@ -28,6 +29,7 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
+            "id",
             "uuid",
             "sku",
             "name",
@@ -44,7 +46,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["uuid", "sku", "sale_price", "created_at", "updated_at"]
+        read_only_fields = ["id", "uuid", "sku", "sale_price", "created_at", "updated_at"]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -82,6 +84,7 @@ class PromotionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Promotion
         fields = [
+            "id",
             "uuid",
             "product",
             "percent_off",
@@ -91,7 +94,7 @@ class PromotionSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["uuid", "created_at", "updated_at"]
+        read_only_fields = ["id", "uuid", "created_at", "updated_at"]
 
     
 

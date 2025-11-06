@@ -7,12 +7,14 @@ from people.models import Seller, Customer
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    # Accept product by UUID instead of numeric PK
-    product = serializers.SlugRelatedField(queryset=Product.objects.all(), slug_field="uuid")
+    # Aceitar produto por PK numérica
+    id = serializers.IntegerField(read_only=True)
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
 
     class Meta:
         model = OrderItem
         fields = [
+            "id",
             "uuid",
             "product",
             "quantity",
@@ -23,15 +25,16 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["uuid", "discount_value", "line_total", "created_at", "updated_at"]
+        read_only_fields = ["id", "uuid", "discount_value", "line_total", "created_at", "updated_at"]
 
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
-    # Accept UUIDs for related entities commonly used by the frontend
-    customer = serializers.SlugRelatedField(queryset=Customer.objects.all(), slug_field="uuid", required=False, allow_null=True)
-    seller = serializers.SlugRelatedField(queryset=Seller.objects.all(), slug_field="uuid")
-    payment_method = serializers.SlugRelatedField(queryset=PaymentMethod.objects.all(), slug_field="uuid", required=False, allow_null=True)
+    # Aceitar relações por PK numérica conforme testes
+    id = serializers.IntegerField(read_only=True)
+    customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.all(), required=False, allow_null=True)
+    seller = serializers.PrimaryKeyRelatedField(queryset=Seller.objects.all())
+    payment_method = serializers.PrimaryKeyRelatedField(queryset=PaymentMethod.objects.all(), required=False, allow_null=True)
     order_type = serializers.CharField(required=False)
     sales_order = serializers.CharField(read_only=True)
     subtotal = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
@@ -41,6 +44,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
+            "id",
             "uuid",
             "customer",
             "seller",
@@ -57,7 +61,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["uuid", "status", "total", "discount_total", "created_at", "updated_at", "subtotal"]
+        read_only_fields = ["id", "uuid", "status", "total", "discount_total", "created_at", "updated_at", "subtotal"]
 
     def update(self, instance, validated_data):
         # Prevent changing payment_method if not in DRAFT
@@ -122,8 +126,8 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class AddItemSerializer(serializers.Serializer):
-    # Accept product UUID from frontend
-    product = serializers.SlugRelatedField(queryset=Product.objects.all(), slug_field="uuid")
+    # Aceitar produto por PK numérica
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
     quantity = serializers.DecimalField(max_digits=12, decimal_places=3)
     unit_price = serializers.DecimalField(max_digits=12, decimal_places=2)
     discount_percent = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=Decimal("0"))

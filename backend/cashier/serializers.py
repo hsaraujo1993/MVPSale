@@ -9,6 +9,7 @@ class CashierSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = CashierSession
         fields = [
+            "id",
             "uuid",
             "opened_by",
             "closed_by",
@@ -26,6 +27,7 @@ class CashierSessionSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = [
+            "id",
             "uuid",
             "closed_by",
             "opened_at",
@@ -37,7 +39,7 @@ class CashierSessionSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_opened_by_name(self, obj):
+    def get_opened_by_name(self, obj) -> str:
         try:
             user = obj.opened_by
             full = (user.get_full_name() or "").strip()
@@ -45,7 +47,7 @@ class CashierSessionSerializer(serializers.ModelSerializer):
         except Exception:
             return ""
 
-    def get_closed_by_name(self, obj):
+    def get_closed_by_name(self, obj) -> str:
         try:
             user = obj.closed_by
             if not user:
@@ -69,5 +71,5 @@ class CloseSessionSerializer(serializers.Serializer):
 class CashMovementSerializer(serializers.ModelSerializer):
     class Meta:
         model = CashMovement
-        fields = ["uuid", "session", "type", "amount", "reason", "reference", "created_at"]
-        read_only_fields = ["uuid", "created_at"]
+        fields = ["id", "uuid", "session", "type", "amount", "reason", "reference", "created_at"]
+        read_only_fields = ["id", "uuid", "created_at"]

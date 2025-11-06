@@ -16,7 +16,7 @@ from .serializers import StockSerializer, StockMovementSerializer
 class StockViewSet(viewsets.ModelViewSet):
     queryset = Stock.objects.select_related("product").all().order_by("-updated_at")
     serializer_class = StockSerializer
-    lookup_field = "uuid"
+    lookup_field = "pk"
     from rest_framework import filters as drf_filters
     filter_backends = [DjangoFilterBackend, drf_filters.OrderingFilter]
     filterset_fields = {"product": ["exact"], "product__uuid": ["exact"], "status": ["exact"], "created_at": ["gte", "lte"], "updated_at": ["gte", "lte"]}

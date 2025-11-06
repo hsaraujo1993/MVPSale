@@ -4,11 +4,14 @@ from .models import PaymentMethod, Receivable, CardBrand, CardFeeTier
 
 
 class PaymentMethodSerializer(serializers.ModelSerializer):
-    fee_percent = serializers.DecimalField(max_digits=6, decimal_places=2)
+    # Permitir 3 casas decimais para alinhar com testes (ex.: "0.000")
+    id = serializers.IntegerField(read_only=True)
+    fee_percent = serializers.DecimalField(max_digits=6, decimal_places=3)
 
     class Meta:
         model = PaymentMethod
         fields = [
+            "id",
             "uuid",
             "code",
             "name",
@@ -20,7 +23,7 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["uuid", "created_at", "updated_at"]
+        read_only_fields = ["id", "uuid", "created_at", "updated_at"]
 
     def validate_fee_percent(self, value):
         try:
@@ -35,6 +38,7 @@ class ReceivableSerializer(serializers.ModelSerializer):
     class Meta:
         model = Receivable
         fields = [
+            "id",
             "uuid",
             "method",
             "reference",
@@ -48,7 +52,7 @@ class ReceivableSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["uuid", "status", "paid_date", "paid_amount", "fee_amount", "created_at", "updated_at"]
+        read_only_fields = ["id", "uuid", "status", "paid_date", "paid_amount", "fee_amount", "created_at", "updated_at"]
 
 
 class SettleSerializer(serializers.Serializer):

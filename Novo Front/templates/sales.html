@@ -16,6 +16,14 @@
     </div>
   </div>
   <div class="lg:col-span-2 space-y-4">
+    <template x-if="!cashierOpen">
+      <div class="rounded-xl border border-amber-600/50 bg-amber-900/30 text-amber-200 p-3">
+        <div class="flex items-center gap-3">
+          <div class="text-sm">Não há caixa aberto. Abra o caixa para iniciar uma venda.</div>
+          <a href="/cashier" class="ml-auto px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-black text-sm">Ir para Caixa</a>
+        </div>
+      </div>
+    </template>
     <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
       <div class="flex gap-2 items-center">
         <input x-model="search" @keyup.enter="loadProducts()" placeholder="Buscar produto (nome, código, código de barras)" class="flex-1 px-3 py-2 rounded bg-slate-900 border border-slate-700" />
@@ -222,10 +230,14 @@
       salesOrder: '',
       showOrderConfirm: false,
       confirmedOrderData: null,
+      cashierOpen: true,
       isCardCredit(){ const pm = (this.paymentMethods||[]).find(x=>x.uuid===this.payment_method); if(!pm) return false; const t=(pm.type||'').toLowerCase(); const n=(pm.name||'').toLowerCase(); return t==='card_credit' || n.includes('crédito') || n.includes('credito'); },
       formatMoney(v){ try { return 'R$ ' + (parseFloat(v)||0).toFixed(2); } catch(e) { return 'R$ 0,00'; } },
       formatQty(v){ const n = parseFloat(v); if (isNaN(n)) return '-'; return Math.round(n).toString(); },
       async init(){
+        // exige caixa aberto
+        try { await Http.fetchJson('/api/cashier/sessions/current/'); this.cashierOpen = true; }
+        catch(e){ this.cashierOpen = false; try{ Http.toast('Abra o caixa antes de emitir pedidos.','error'); }catch(_){} }
         // Carregar listas base primeiro
         let oid = '';
         try { const qs = new URLSearchParams(window.location.search); oid = qs.get('order')||''; } catch(e){}
@@ -300,7 +312,7 @@
         }
         return meta;
       },
-      async ensureOrder(){ if (this.orderId) return; const payment_metadata = this.buildPaymentMetadata(); if (!this.seller) { try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e){} } if (!this.seller) throw new Error('Defina um vendedor antes de criar o pedido.'); const order_type = (String(this.orderType||'')==='orcamento') ? 'orcamento' : 'carrinho'; const created = await Http.fetchJson('/api/sale/orders/', { method:'POST', body: JSON.stringify({ customer: this.customer||null, seller: this.seller||null, payment_method: this.payment_method||null, order_type, order_discount_abs: parseFloat(this.orderDiscountAbs||0), payment_metadata })}); if (!created || !created.uuid) throw new Error('Falha ao criar pedido'); this.orderId = created.uuid; this.orderStatus = created.status||'DRAFT'; },
+      async ensureOrder(){ if (!this.cashierOpen) { Http.toast('Caixa fechado. Abra o caixa para criar pedidos.','error'); throw new Error('Caixa fechado'); } if (this.orderId) return; const payment_metadata = this.buildPaymentMetadata(); if (!this.seller) { try { const me = await Http.fetchJson('/api/people/sellers/ensure-me/', { method:'POST' }); if (me && me.uuid) this.seller = me.uuid; } catch(e){} } if (!this.seller) throw new Error('Defina um vendedor antes de criar o pedido.'); const order_type = (String(this.orderType||'')==='orcamento') ? 'orcamento' : 'carrinho'; const created = await Http.fetchJson('/api/sale/orders/', { method:'POST', body: JSON.stringify({ customer: this.customer||null, seller: this.seller||null, payment_method: this.payment_method||null, order_type, order_discount_abs: parseFloat(this.orderDiscountAbs||0), payment_metadata })}); if (!created || !created.uuid) throw new Error('Falha ao criar pedido'); this.orderId = created.uuid; this.orderStatus = created.status||'DRAFT'; },
       async addItem(p){
         const unit = parseFloat(p.sale_price||0)||0;
         const quantity=1;

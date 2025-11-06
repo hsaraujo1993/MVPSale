@@ -1,4 +1,4 @@
-<!-- 🏷️ Cabeçalho -->
+﻿<!-- ðŸ·ï¸ CabeÃ§alho -->
 <div class="flex items-center justify-between mb-6">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">Fornecedores</h1>
@@ -10,8 +10,8 @@
 <div id="newSupWrap" class="hidden mb-4 bg-slate-800/50 border border-slate-700 rounded-2xl p-4">
   <form id="newSupForm" class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
     <div>
-      <label for="sup-corporate" class="sr-only">Razão Social</label>
-      <label class="block text-sm mb-1">Razão Social</label>
+      <label for="sup-corporate" class="sr-only">RazÃ£o Social</label>
+      <label class="block text-sm mb-1">RazÃ£o Social</label>
       <input id="sup-corporate" name="corporate_name" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" required />
     </div>
     <div>
@@ -30,8 +30,8 @@
       <input id="sup-phone" name="phone" aria-labelledby="lbl-sup-phone" aria-label="Telefone do fornecedor" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
     </div>
     <div>
-      <label for="sup-address" class="sr-only">Endereço</label>
-      <label class="block text-sm mb-1">Endereço</label>
+      <label for="sup-address" class="sr-only">EndereÃ§o</label>
+      <label class="block text-sm mb-1">EndereÃ§o</label>
       <input id="sup-address" name="address" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
     </div>
     <div>
@@ -60,9 +60,9 @@
   <div class="flex gap-2 items-center bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 backdrop-blur-sm">
     <label for="qSup" class="sr-only">Buscar fornecedores</label>
     <input id="qSup" aria-label="Buscar fornecedores" placeholder="Buscar por nome/email/telefone" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 min-w-[260px] text-sm" />
-    <label for="orderingSup" class="sr-only">Ordenação</label>
-    <select id="orderingSup" aria-label="Ordenação" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm">
-      <option value="corporate_name">Razão Social</option>
+    <label for="orderingSup" class="sr-only">OrdenaÃ§Ã£o</label>
+    <select id="orderingSup" aria-label="OrdenaÃ§Ã£o" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm">
+      <option value="corporate_name">RazÃ£o Social</option>
       <option value="-created_at">Mais recentes</option>
     </select>
     <button id="applySup" class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">Aplicar</button>
@@ -72,20 +72,20 @@
 <div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
   <table class="min-w-full text-sm border-separate border-spacing-0">
     <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs"><tr>
-      <th class="text-left px-3 py-2 font-medium">Razão Social</th>
+      <th class="text-left px-3 py-2 font-medium">RazÃ£o Social</th>
       <th class="text-left px-3 py-2 font-medium">CNPJ</th>
       <th class="text-left px-3 py-2 font-medium">Email</th>
       <th class="text-left px-3 py-2 font-medium">Telefone</th>
-      <th class="text-left px-3 py-2 font-medium">Ações</th>
+      <th class="text-left px-3 py-2 font-medium">AÃ§Ãµes</th>
     </tr></thead>
     <tbody id="rowsSup" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition"></tbody>
   </table>
 </div>
 
 <div class="mt-4 flex items-center gap-2 text-sm">
-  <button id="prevSup" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">← Anterior</button>
+  <button id="prevSup" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">â† Anterior</button>
   <span id="pageInfoSup" class="text-slate-400 min-w-[80px] text-center"></span>
-  <button id="nextSup" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Próxima →</button>
+  <button id="nextSup" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">PrÃ³xima â†’</button>
 </div>
 
 <script>
@@ -129,7 +129,7 @@
           <td class="px-3 py-2">${s.phone||''}</td>
           <td class="px-3 py-2"><button class="text-sky-400 hover:underline" data-view="${s.uuid}">Visualizar</button></td>`; rows.appendChild(tr);
       }); rows.querySelectorAll('[data-view]').forEach(btn=> btn.addEventListener('click', ()=> viewSup(btn.dataset.view)));
-      ss.next=data.next; ss.previous=data.previous; pageInfo.textContent = `Página ${ss.page}`;
+      ss.next=data.next; ss.previous=data.previous; pageInfo.textContent = `PÃ¡gina ${ss.page}`;
     }catch(err){ Http.toast(err.message||'Erro ao carregar fornecedores','error'); }
   } load();
 
@@ -148,16 +148,16 @@
             </div>
           </div>
           <div id="supView" class="space-y-1">
-            <div class="text-sm">Razão Social: <span>${s.corporate_name}</span></div>
+            <div class="text-sm">RazÃ£o Social: <span>${s.corporate_name}</span></div>
             <div class="text-sm">CNPJ: <span>${s.cnpj||''}</span></div>
             <div class="text-sm">Email: <span>${s.email||''}</span></div>
             <div class="text-sm">Telefone: <span>${s.phone||''}</span></div>
           </div>
           <form id="supEdit" class="hidden grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
-            <div><label class="block text-sm mb-1">Razão Social</label><input name="corporate_name" value="${s.corporate_name}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">RazÃ£o Social</label><input name="corporate_name" value="${s.corporate_name}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
             <div><label class="block text-sm mb-1">Email</label><input name="email" value="${s.email||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
             <div><label class="block text-sm mb-1">Telefone</label><input name="phone" value="${s.phone||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
-            <div><label class="block text-sm mb-1">Endereço</label><input name="address" value="${s.address||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
+            <div><label class="block text-sm mb-1">EndereÃ§o</label><input name="address" value="${s.address||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
             <div><label class="block text-sm mb-1">CEP</label><input name="cep" value="${s.cep||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
             <div><label class="block text-sm mb-1">Cidade</label><input name="city" value="${s.city||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
             <div><label class="block text-sm mb-1">UF</label><input name="uf" value="${s.uf||''}" class="px-3 py-2 rounded bg-slate-900 border border-slate-700"/></div>
@@ -167,7 +167,7 @@
       detailWrap.scrollIntoView({behavior:'smooth'});
       document.getElementById('closeSup').onclick = ()=> detailWrap.innerHTML='';
       document.getElementById('editSup').onclick = ()=>{ document.getElementById('supView').classList.add('hidden'); document.getElementById('supEdit').classList.remove('hidden'); };
-      document.getElementById('delSup').onclick = ()=> UI.confirm(`Excluir fornecedor "${s.corporate_name}"?`, async ()=>{ try{ await Http.fetchJson(`/api/people/suppliers/${uuid}/`, { method:'DELETE' }); Http.toast('Excluído','success'); detailWrap.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } }, 'Excluir', 'danger');
+      document.getElementById('delSup').onclick = ()=> UI.confirm(`Excluir fornecedor "${s.corporate_name}"?`, async ()=>{ try{ await Http.fetchJson(`/api/people/suppliers/${uuid}/`, { method:'DELETE' }); Http.toast('ExcluÃ­do','success'); detailWrap.innerHTML=''; load(); }catch(err){ Http.toast(err.message||'Erro ao excluir','error'); } }, 'Excluir', 'danger');
       document.getElementById('supEdit').onsubmit = async (e)=>{
         e.preventDefault();
         const form = e.currentTarget || e.target;
@@ -189,3 +189,4 @@
     }catch(err){ Http.toast(err.message||'Erro ao carregar detalhe','error'); }
   }
 </script>
+

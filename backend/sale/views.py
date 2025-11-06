@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema_view, extend_schema
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiTypes
 
 from .models import Order, OrderItem, confirm_order, cancel_order
 from .serializers import OrderSerializer, OrderItemSerializer, AddItemSerializer, OrderActionSerializer
@@ -15,7 +15,8 @@ from .serializers import OrderSerializer, OrderItemSerializer, AddItemSerializer
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.select_related("seller", "customer").all().order_by("-created_at")
     serializer_class = OrderSerializer
-    lookup_field = "uuid"
+    # Usar PK numérica nas rotas de detalhe para compatibilidade com clientes/testes
+    lookup_field = "pk"
     from rest_framework import filters as drf_filters
     from django_filters.rest_framework import DjangoFilterBackend
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
@@ -48,7 +49,20 @@ class OrderViewSet(viewsets.ModelViewSet):
         item.save()
         return Response(OrderItemSerializer(item).data, status=status.HTTP_201_CREATED)
 
-    @extend_schema(request=OrderItemSerializer, responses={200: OrderItemSerializer}, tags=["sale"], summary="Obter/atualizar/excluir item do pedido")
+    @extend_schema(
+        request=OrderItemSerializer,
+        responses={200: OrderItemSerializer},
+        tags=["sale"],
+        summary="Obter/atualizar/excluir item do pedido",
+        parameters=[
+            OpenApiParameter(
+                name="item_id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="UUID do item do pedido",
+            )
+        ],
+    )
     @action(detail=True, methods=["get", "patch", "put", "delete"], url_path=r"items/(?P<item_id>[^/.]+)")
     def item(self, request, *args, **kwargs):
         order = self.get_object()

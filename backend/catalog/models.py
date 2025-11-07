@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.conf import settings
 from decimal import Decimal
+from core.pricing import apply_rounding
 
 
 class TimeStampedModel(models.Model):
@@ -49,6 +50,13 @@ class Product(TimeStampedModel):
     cost_price = models.DecimalField(max_digits=12, decimal_places=2)
     margin = models.DecimalField(max_digits=5, decimal_places=2, help_text="percentual 0-100")
     sale_price = models.DecimalField(max_digits=12, decimal_places=2)
+    # Novos campos de custo
+    # - last_cost_price: custo líquido da última compra (base para precificação)
+    # - avg_cost_price: custo médio ponderado (base contábil/estoque)
+    last_cost_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    avg_cost_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    # Flag persistida para revisão de preço
+    needs_review = models.BooleanField(default=False, db_index=True)
     barcode = models.CharField(max_length=64, blank=True, db_index=True)
     active = models.BooleanField(default=True, db_index=True)
 
@@ -69,20 +77,37 @@ class Product(TimeStampedModel):
         if errors:
             raise ValidationError(errors)
 
+    def _get_pricing_cost(self):
+        from django.conf import settings as dj_settings
+        basis = getattr(dj_settings, "PRICE_COST_BASIS", "last")
+        if basis == "last" and self.last_cost_price is not None:
+            return Decimal(str(self.last_cost_price))
+        if basis == "average" and self.avg_cost_price is not None:
+            return Decimal(str(self.avg_cost_price))
+        # fallback ao cost_price padrão do produto
+        return Decimal(str(self.cost_price)) if self.cost_price is not None else None
+
     def _calc_sale_price(self, cost=None, margin=None):
-        cost = Decimal(str(cost if cost is not None else self.cost_price)) if (cost is not None or self.cost_price is not None) else None
+        # Se custo não for informado, usa a base de precificação configurada
+        if cost is None:
+            cost = self._get_pricing_cost()
+        else:
+            cost = Decimal(str(cost))
         margin = Decimal(str(margin if margin is not None else self.margin)) if (margin is not None or self.margin is not None) else None
         if cost is None or margin is None:
             return None
         # Regra solicitada: se a margem for 0, o sale_price deve ser 0
         if margin == 0:
             return Decimal("0.00")
-        return cost + (cost * (margin / Decimal("100")))
+        base = cost + (cost * (margin / Decimal("100")))
+        # Apply rounding strategy from settings
+        strategy = getattr(settings, "PRICE_ROUNDING", "none")
+        return apply_rounding(Decimal(base), strategy)
 
     def save(self, *args, **kwargs):
         # Auto SKU simple strategy: P + zero-padded ID after first save
         creating = self.pk is None
-        # Always compute sale_price from cost+margin
+        # Always compute sale_price from configured cost basis + margin
         calc = self._calc_sale_price()
         if calc is not None:
             self.sale_price = calc

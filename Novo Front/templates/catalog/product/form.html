@@ -63,14 +63,14 @@
       const cats = await Http.fetchJson('/api/catalog/categories/?ordering=name');
       const catSel = document.getElementById('category');
       catSel.innerHTML = (cats.results||cats||[])
-        .map(c=>`<option value="${c.uuid}">${c.name}</option>`).join('');
+        .map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
     } catch(e) {}
 
     try {
       const brands = await Http.fetchJson('/api/catalog/brands/?ordering=name');
       const brandSel = document.getElementById('brand');
       brandSel.innerHTML = (brands.results||brands||[])
-        .map(b=>`<option value="${b.uuid}">${b.name}</option>`).join('');
+        .map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
     } catch(e) {}
   })();
 
@@ -110,4 +110,3 @@
     }
   });
 </script>
-

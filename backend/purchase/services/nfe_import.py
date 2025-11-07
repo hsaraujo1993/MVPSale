@@ -12,6 +12,8 @@ from catalog.models import Category, Brand, Product
 from people.models import Supplier
 from stock.models import StockMovement
 from ..models import PurchaseInvoice, PurchaseInstallment, SupplierProduct
+from django.conf import settings as s
+from core.pricing import apply_rounding
 
 log = logging.getLogger(__name__)
 
@@ -183,6 +185,8 @@ def import_nfe_xml(xml_text: str) -> Dict[str, Any]:
                 "cofins_aliq": cofins_aliq,
                 "uCom": uCom,
                 "uTrib": uTrib,
+                "last_cost": Decimal(str(prod.get("vUnCom") or 0)),
+                "last_purchase_date": issue_date or datetime.date.today(),
             },
         )
         log.info("[nfe_import] supplier_product %s (created=%s)", sp.id, sp_created)
@@ -191,6 +195,61 @@ def import_nfe_xml(xml_text: str) -> Dict[str, Any]:
         if qCom and qCom > 0:
             StockMovement.objects.create(product=product, type="ENTRADA", quantity=qCom, reference=f"NF {number}")
             log.info("[nfe_import] stock entry product=%s qty=%s", product.id, qCom)
+        # Atualizar custos do produto (last e average)
+        try:
+            unit_cost = Decimal(str(prod.get("vUnCom") or 0))
+            product.last_cost_price = unit_cost
+            # calcular média ponderada usando estoque atual antes desta entrada
+            from stock.models import Stock
+            cur_qty = Decimal("0")
+            try:
+                st = Stock.objects.get(product=product)
+                cur_qty = st.quantity_current or Decimal("0")
+            except Stock.DoesNotExist:
+                cur_qty = Decimal("0")
+            total_qty = (cur_qty or Decimal("0")) + (qCom or Decimal("0"))
+            if total_qty > 0:
+                # usa avg anterior se houver, senão cost_price
+                cur_avg = Decimal(str(product.avg_cost_price or product.cost_price or unit_cost))
+                new_avg = ((cur_avg * cur_qty) + (unit_cost * qCom)) / total_qty
+                # duas casas decimais
+                product.avg_cost_price = new_avg.quantize(Decimal("0.01"))
+            else:
+                product.avg_cost_price = unit_cost.quantize(Decimal("0.01"))
+            # Sinalizar revisão de preço conforme threshold ou condições operacionais
+            try:
+                threshold = Decimal(str(getattr(s, "PRICE_REVIEW_THRESHOLD", 0.05)))
+                basis = getattr(s, "PRICE_COST_BASIS", "last")
+                pricing_cost = unit_cost if basis == "last" else (product.avg_cost_price or unit_cost)
+                margin = Decimal(str(product.margin or 0))
+                if margin == 0:
+                    suggested = Decimal("0.00")
+                else:
+                    base = pricing_cost + (pricing_cost * (margin / Decimal("100")))
+                    suggested = apply_rounding(base, getattr(s, "PRICE_ROUNDING", "none"))
+                price_diff_pct = None
+                if product.sale_price and product.sale_price != 0:
+                    price_diff_pct = (Decimal(str(suggested)) - Decimal(str(product.sale_price))) / Decimal(str(product.sale_price))
+                cost_diff_pct = None
+                if product.avg_cost_price and product.avg_cost_price != 0:
+                    cost_diff_pct = (unit_cost - Decimal(str(product.avg_cost_price))) / Decimal(str(product.avg_cost_price))
+                flag = False
+                if price_diff_pct is not None and abs(price_diff_pct) >= threshold:
+                    flag = True
+                if not flag and cost_diff_pct is not None and abs(cost_diff_pct) >= threshold:
+                    flag = True
+                # Regra adicional: produto sem margem/preço definido deve ir para revisão
+                if not flag and (margin == 0 or Decimal(str(product.sale_price or 0)) == 0):
+                    flag = True
+                if flag:
+                    product.needs_review = True
+                    log.info("[price_review] flagged product id=%s sku=%s name=%s suggested=%s current=%s diff=%.4f",
+                             product.id, product.sku, product.name, suggested, product.sale_price, float(price_diff_pct or 0))
+            except Exception:
+                pass
+            product.save(update_fields=["last_cost_price", "avg_cost_price", "needs_review", "updated_at"])
+        except Exception:
+            pass
 
     # Installments
     for dup in dup_list:

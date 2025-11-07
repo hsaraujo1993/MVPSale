@@ -1,6 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 from django.core.management.base import BaseCommand
 from catalog.models import Product
+from core.pricing import apply_rounding
 
 
 class Command(BaseCommand):
@@ -41,17 +42,27 @@ class Command(BaseCommand):
                 self.stdout.write("(Exibidos no máximo 50 itens em dry-run)")
             return
 
-        # --all: recalcular todos com base em cost_price + margin
+        # --all: recalcular todos com base na BASE DE CUSTO configurada (PRICE_COST_BASIS) + margin
         qs = Product.objects.all()
         total = qs.count()
         self.stdout.write(f"Recalculando sale_price de {total} produtos (--all)")
+        from django.conf import settings as dj_settings
+        basis = getattr(dj_settings, "PRICE_COST_BASIS", "last")
         for p in qs.iterator(chunk_size=500):
-            cost = Decimal(str(p.cost_price or 0))
+            # Seleciona a base de custo
+            if basis == "last" and getattr(p, "last_cost_price", None) is not None:
+                cost = Decimal(str(p.last_cost_price))
+            elif basis == "average" and getattr(p, "avg_cost_price", None) is not None:
+                cost = Decimal(str(p.avg_cost_price))
+            else:
+                cost = Decimal(str(p.cost_price or 0))
             margin = Decimal(str(p.margin or 0))
             if margin == 0:
                 new_sale = Decimal("0.00")
             else:
-                new_sale = (cost + (cost * (margin / Decimal("100")))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                base = cost + (cost * (margin / Decimal("100")))
+                from django.conf import settings as s
+                new_sale = apply_rounding(Decimal(base), getattr(s, "PRICE_ROUNDING", "none"))
             if new_sale != p.sale_price:
                 if not dry:
                     p.sale_price = new_sale
@@ -59,4 +70,3 @@ class Command(BaseCommand):
                     p.save(update_fields=["sale_price", "updated_at"])  # save() já recalcula, mas confirmamos o valor
                 updated += 1
         self.stdout.write(f"Produtos atualizados (ou que seriam, em dry-run): {updated}")
-

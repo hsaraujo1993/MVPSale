@@ -22,6 +22,9 @@ class SupplierProduct(TimeStampedModel):
     supplier_code = models.CharField(max_length=60, db_index=True)
     universal_code = models.CharField(max_length=60, blank=True)
     barcode = models.CharField(max_length=64, blank=True)
+    # Custos/compra (para análise por fornecedor)
+    last_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    last_purchase_date = models.DateField(null=True, blank=True)
 
     # Fiscais
     ncm = models.CharField(max_length=10, blank=True)

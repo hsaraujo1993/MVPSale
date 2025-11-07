@@ -40,6 +40,7 @@ urlpatterns = [
     path("home", TemplateView.as_view(template_name="home.html"), name="home"),
     path("home/", TemplateView.as_view(template_name="home.html")),
     path("catalog", TemplateView.as_view(template_name="catalog.html"), name="catalog"),
+    path("price-review", TemplateView.as_view(template_name="catalog/price_review.html"), name="price-review"),
     path("nfe", TemplateView.as_view(template_name="nfe.html"), name="nfe"),
     path("sales", login_required(TemplateView.as_view(template_name="sales.html")), name="sales"),
 

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Revisão de Preço - MVPSale{% endblock %}
+{% block content %}
+  {% include "partials/breadcrumb.html" with b1="Administrativo" u1="/nfe?tab=companies" b2="Revisão de Preço" %}
+
+  <div class="max-w-7xl mx-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-xl font-semibold">Itens para Revisão de Preço</h1>
+      <span class="inline-flex items-center text-sm px-2 py-1 rounded bg-slate-800 border border-slate-700">Total: <span id="count" class="ml-1 font-medium">0</span></span>
+    </div>
+
+    <!-- Barra de busca e ordenação -->
+    <div class="flex flex-wrap items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 mb-4">
+      <label for="q" class="sr-only">Buscar</label>
+      <input id="q" placeholder="Buscar por nome ou SKU" class="flex-1 min-w-[200px] px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+      <label for="ordering" class="sr-only">Ordenação</label>
+      <select id="ordering" class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        <option value="-price_diff_pct">Maior Δ preço</option>
+        <option value="price_diff_pct">Menor Δ preço</option>
+        <option value="-cost_diff_pct">Maior Δ custo</option>
+        <option value="cost_diff_pct">Menor Δ custo</option>
+        <option value="name">Nome</option>
+        <option value="sku">SKU</option>
+      </select>
+      <button id="applyFilters" class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">
+        Aplicar
+      </button>
+    </div>
+
+    <div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+      <table class="min-w-full text-sm border-separate border-spacing-0" id="tbl">
+        <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs">
+          <tr>
+            <th class="text-left px-3 py-2 font-medium">Produto</th>
+            <th class="text-left px-3 py-2 font-medium">SKU</th>
+            <th class="text-left px-3 py-2 font-medium">Custo (base)</th>
+            <th class="text-left px-3 py-2 font-medium">Margem</th>
+            <th class="text-left px-3 py-2 font-medium">Preço atual</th>
+            <th class="text-left px-3 py-2 font-medium">Preço sugerido</th>
+            <th class="text-left px-3 py-2 font-medium">Δ Preço</th>
+            <th class="text-left px-3 py-2 font-medium">Δ Custo</th>
+            <th class="text-left px-3 py-2 font-medium">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="rows" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition-colors duration-150"></tbody>
+      </table>
+    </div>
+
+    <!-- Paginação -->
+    <div class="mt-4 flex items-center gap-2 text-sm">
+      <button id="prev" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">« Anterior</button>
+      <span id="pageInfo" class="text-slate-400 min-w-[80px] text-center"></span>
+      <button id="next" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Próxima »</button>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const state = { page: 1, q: '', ordering: '-price_diff_pct', count: 0, next: null, previous: null };
+      const rows = document.getElementById('rows');
+      const pageInfo = document.getElementById('pageInfo');
+      const prev = document.getElementById('prev');
+      const next = document.getElementById('next');
+      const q = document.getElementById('q');
+      const ordering = document.getElementById('ordering');
+      const applyFilters = document.getElementById('applyFilters');
+
+      applyFilters.addEventListener('click', ()=>{ state.q=q.value; state.ordering=ordering.value; state.page=1; load(); });
+      prev.addEventListener('click', ()=>{ if(state.previous){ state.page--; load(); }});
+      next.addEventListener('click', ()=>{ if(state.next){ state.page++; load(); }});
+
+      function fmtMoney(n){ return (n==null? '' : ('R$ ' + Number(n).toFixed(2))); }
+      function fmtPct(x){ return (x==null? '' : ((x*100).toFixed(1)+'%')); }
+
+      async function load(){
+        const params = new URLSearchParams();
+        params.set('page', state.page);
+        if (state.q) params.set('search', state.q);
+        if (state.ordering) params.set('ordering', state.ordering);
+        try {
+          const data = await Http.fetchJson(`/api/catalog/products/price-review/?${params.toString()}`);
+          state.count = data.count||0; state.next = data.next; state.previous = data.previous;
+          document.getElementById('count').textContent = state.count;
+          rows.innerHTML = '';
+          (data.results||[]).forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-slate-800/60';
+            tr.innerHTML = `
+              <td class="px-3 py-2 font-medium">${item.name}</td>
+              <td class="px-3 py-2">${item.sku||''}</td>
+              <td class="px-3 py-2 text-slate-300">${fmtMoney(item.pricing_cost)}</td>
+              <td class="px-3 py-2 text-slate-300">${item.margin!=null? Number(item.margin).toFixed(2): ''}%</td>
+              <td class="px-3 py-2 text-slate-300">${fmtMoney(item.sale_price)}</td>
+              <td class="px-3 py-2 text-emerald-300">${fmtMoney(item.suggested_sale_price)}</td>
+              <td class="px-3 py-2 ${((item.price_diff_pct||0) >= 0 ? 'text-amber-300':'text-rose-300')}">${fmtPct(item.price_diff_pct)}</td>
+              <td class="px-3 py-2 ${((item.cost_diff_pct||0) >= 0 ? 'text-amber-300':'text-rose-300')}">${fmtPct(item.cost_diff_pct)}</td>
+              <td class="px-3 py-2">
+                <button class="inline-flex items-center px-3 py-1.5 rounded-md bg-sky-600 hover:bg-sky-500 text-white text-sm" data-uuid="${item.uuid}" data-val="false">Marcar revisado</button>
+                <button class="inline-flex items-center px-3 py-1.5 rounded-md bg-rose-600 hover:bg-rose-500 text-white text-sm" data-uuid="${item.uuid}" data-val="true">Marcar pendente</button>
+              </td>`;
+            rows.appendChild(tr);
+          });
+          pageInfo.textContent = `Página ${state.page}`;
+          prev.disabled = !state.previous; next.disabled = !state.next;
+
+          rows.querySelectorAll('button[data-uuid]').forEach(btn => {
+            btn.addEventListener('click', async (e)=>{
+              const uuid = btn.getAttribute('data-uuid');
+              const value = btn.getAttribute('data-val') === 'true';
+              try {
+                await Http.fetchJson(`/api/catalog/products/${uuid}/mark-reviewed/`, { method: 'PATCH', body: JSON.stringify({ value }) });
+                await load();
+              } catch(err) { alert('Falha ao atualizar: ' + (err && err.message || err)); }
+            });
+          });
+        } catch(err){
+          rows.innerHTML = `<tr><td colspan="9" class="px-3 py-4 text-rose-300">Erro ao carregar: ${err && err.message || err}</td></tr>`;
+          document.getElementById('count').textContent = '0';
+          prev.disabled = true; next.disabled = true; pageInfo.textContent = '';
+        }
+      }
+      document.addEventListener('DOMContentLoaded', load);
+    })();
+  </script>
+{% endblock %}

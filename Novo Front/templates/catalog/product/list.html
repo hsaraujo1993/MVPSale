@@ -43,6 +43,7 @@
         <th class="text-left px-3 py-2 font-medium">Nome</th>
         <th class="text-left px-3 py-2 font-medium">SKU</th>
         <th class="text-left px-3 py-2 font-medium">Preço</th>
+        <th class="text-left px-3 py-2 font-medium">Custo</th>
         <th class="text-left px-3 py-2 font-medium">Ativo</th>
         <th class="text-left px-3 py-2 font-medium">Ações</th>
       </tr>
@@ -99,6 +100,7 @@
           <td class="px-3 py-2 font-medium">${p.name}</td>
           <td class="px-3 py-2">${p.sku||''}</td>
           <td class="px-3 py-2 text-slate-300">${p.sale_price ? 'R$ '+parseFloat(p.sale_price).toFixed(2) : '-'}</td>
+          <td class="px-3 py-2 text-slate-300">${(p.pricing_cost||p.last_cost_price||p.avg_cost_price||p.cost_price) ? 'R$ '+parseFloat(p.pricing_cost||p.last_cost_price||p.avg_cost_price||p.cost_price).toFixed(2) : '-'}</td>
           <td class="px-3 py-2">${p.active ? '<span class="text-emerald-400 font-medium">Sim</span>' : '<span class="text-slate-500">Não</span>'}</td>
           <td class="px-3 py-2 space-x-3">
             <button class="text-sky-400 hover:underline" data-view="${p.uuid}">Visualizar</button>
@@ -150,22 +152,22 @@
       try {
         const cats = await Http.fetchJson('/api/catalog/categories/?ordering=name');
         const arr = cats.results||cats||[];
-        // populate cache id->name (support uuid or id fields)
-        arr.forEach(c=>{ const key = c.uuid||c.id||c.pk||c.id; try{ window._categoriesCache[key]=c.name; }catch(e){} });
-        // compute current category id (prefer category_detail if provided by API)
-        const currentCategoryId = (p && p.category_detail && typeof p.category_detail === 'object' && p.category_detail !== null)
-          ? (p.category_detail.uuid||p.category_detail.id||p.category_detail)
-          : (p && typeof p.category === 'object' && p.category !== null ? (p.category.uuid||p.category.id||p.category) : (p.category||''));
-        catOpts = arr.map(c=>`<option value="${c.uuid}" ${String(c.uuid)===String(currentCategoryId)?'selected':''}>${c.name}</option>`).join('');
+        // cache por id e uuid
+        arr.forEach(c=>{ try{ if(c.id!=null) window._categoriesCache[c.id]=c.name; if(c.uuid) window._categoriesCache[c.uuid]=c.name; }catch(e){} });
+        // id atual (preferir PK numérica)
+        const currentCategoryId = (p && p.category != null)
+          ? p.category
+          : (p && p.category_detail && typeof p.category_detail === 'object' ? (p.category_detail.id||p.category_detail.uuid||'') : '');
+        catOpts = arr.map(c=>`<option value="${c.id}" ${String(c.id)===String(currentCategoryId)?'selected':''}>${c.name}</option>`).join('');
       } catch(e) {}
       try {
         const brands = await Http.fetchJson('/api/catalog/brands/?ordering=name');
         const arr = brands.results||brands||[];
-        arr.forEach(b=>{ const key = b.uuid||b.id||b.pk||b.id; try{ window._brandsCache[key]=b.name; }catch(e){} });
-        const currentBrandId = (p && p.brand_detail && typeof p.brand_detail === 'object' && p.brand_detail !== null)
-          ? (p.brand_detail.uuid||p.brand_detail.id||p.brand_detail)
-          : (p && typeof p.brand === 'object' && p.brand !== null ? (p.brand.uuid||p.brand.id||p.brand) : (p.brand||''));
-        brandOpts = arr.map(b=>`<option value="${b.uuid}" ${String(b.uuid)===String(currentBrandId)?'selected':''}>${b.name}</option>`).join('');
+        arr.forEach(b=>{ try{ if(b.id!=null) window._brandsCache[b.id]=b.name; if(b.uuid) window._brandsCache[b.uuid]=b.name; }catch(e){} });
+        const currentBrandId = (p && p.brand != null)
+          ? p.brand
+          : (p && p.brand_detail && typeof p.brand_detail === 'object' ? (p.brand_detail.id||p.brand_detail.uuid||'') : '');
+        brandOpts = arr.map(b=>`<option value="${b.id}" ${String(b.id)===String(currentBrandId)?'selected':''}>${b.name}</option>`).join('');
       } catch(e) {}
 
       // resolve display names for category and brand

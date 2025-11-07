@@ -1,11 +1,11 @@
-from rest_framework import serializers
+﻿from rest_framework import serializers
 from .models import Category, Brand, Product, Promotion
 
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        # Incluir campo "id" para compatibilidade com testes/clients que esperam PK numérica
+        # Incluir campo "id" para compatibilidade com testes/clients que esperam PK numÃ©rica
         fields = ["id", "uuid", "name", "slug", "active", "created_at", "updated_at"]
         read_only_fields = ["id", "uuid", "slug", "created_at", "updated_at"]
 
@@ -19,12 +19,13 @@ class BrandSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     sale_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    # Aceitar category/brand por ID numérico (Primary Key) para alinhar com os testes
+    # Aceitar category/brand por ID numÃ©rico (Primary Key) para alinhar com os testes
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
     brand = serializers.PrimaryKeyRelatedField(queryset=Brand.objects.all())
     # include nested details for frontend convenience
     category_detail = CategorySerializer(source='category', read_only=True)
     brand_detail = BrandSerializer(source='brand', read_only=True)
+    needs_review = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Product
@@ -43,10 +44,11 @@ class ProductSerializer(serializers.ModelSerializer):
             "sale_price",
             "barcode",
             "active",
+            "needs_review",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "uuid", "sku", "sale_price", "created_at", "updated_at"]
+        read_only_fields = ["id", "uuid", "sku", "sale_price", "needs_review", "created_at", "updated_at"]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -67,6 +69,35 @@ class ProductSerializer(serializers.ModelSerializer):
             data["supplier_code"] = enriched
         except Exception:
             data["supplier_code"] = []
+        # Expor custos de precificaÃ§Ã£o
+        try:
+            data["last_cost_price"] = f"{instance.last_cost_price:.2f}" if getattr(instance, "last_cost_price", None) is not None else None
+        except Exception:
+            data["last_cost_price"] = None
+        try:
+            data["avg_cost_price"] = f"{instance.avg_cost_price:.2f}" if getattr(instance, "avg_cost_price", None) is not None else None
+        except Exception:
+            data["avg_cost_price"] = None
+        try:
+            cost = instance._get_pricing_cost() if hasattr(instance, "_get_pricing_cost") else None
+            data["pricing_cost"] = f"{cost:.2f}" if cost is not None else None
+        except Exception:
+            data["pricing_cost"] = None
+        # Preço sugerido (base custo configurada + margem + arredondamento)
+        try:
+            from decimal import Decimal
+            from django.conf import settings as s
+            from core.pricing import apply_rounding
+            if cost is None:
+                cost = instance._get_pricing_cost() if hasattr(instance, "_get_pricing_cost") else None
+            if cost is not None and instance.margin is not None:
+                base = Decimal(str(cost)) + (Decimal(str(cost)) * (Decimal(str(instance.margin)) / Decimal("100")))
+                suggested = apply_rounding(base, getattr(s, "PRICE_ROUNDING", "none"))
+                data["suggested_sale_price"] = f"{suggested:.2f}"
+            else:
+                data["suggested_sale_price"] = None
+        except Exception:
+            data["suggested_sale_price"] = None
         return data
 
     def validate_margin(self, value):
@@ -76,7 +107,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def validate_cost_price(self, value):
         if value < 0:
-            raise serializers.ValidationError("Preço de custo não pode ser negativo.")
+            raise serializers.ValidationError("Preço de custo nÃ£o pode ser negativo.")
         return value
 
 
@@ -109,11 +140,12 @@ class PromotionSerializer(serializers.ModelSerializer):
         active = attrs.get("active") if "active" in attrs else getattr(self.instance, "active", True)
         product = attrs.get("product") or getattr(self.instance, "product", None)
         if start and end and start > end:
-            raise serializers.ValidationError({"end_date": "Data final deve ser maior ou igual à inicial."})
+            raise serializers.ValidationError({"end_date": "Data final deve ser maior ou igual Ã  inicial."})
         if active and product:
             qs = Promotion.objects.filter(product=product, active=True)
             if self.instance:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
-                raise serializers.ValidationError({"active": "Já existe promoção ativa para este produto."})
+                raise serializers.ValidationError({"active": "JÃ¡ existe promoÃ§Ã£o ativa para este produto."})
         return attrs
+

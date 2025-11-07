@@ -153,6 +153,16 @@ PREVENT_NEGATIVE_STOCK = os.getenv("PREVENT_NEGATIVE_STOCK", "1") == "1"
 BLOCK_SALE_IF_ZERO_STOCK = os.getenv("BLOCK_SALE_IF_ZERO_STOCK", "1") == "1"
 CASHIER_REQUIRED_FOR_SALE = os.getenv("CASHIER_REQUIRED_FOR_SALE", "1") == "1"
 
+# Pricing configuration
+# Which cost basis to use for price suggestion/calculation: 'last' (last purchase cost) or 'average' (weighted avg cost)
+PRICE_COST_BASIS = os.getenv("PRICE_COST_BASIS", "last").lower()
+# Rounding strategy placeholder (e.g., 'none', 'psychological', 'step:0.10'). Currently informational.
+PRICE_ROUNDING = os.getenv("PRICE_ROUNDING", "none").lower()
+# Threshold for flagging items that need price review when costs change (percentage, e.g., 0.05 = 5%)
+PRICE_REVIEW_THRESHOLD = float(os.getenv("PRICE_REVIEW_THRESHOLD", "0.05"))
+# Considerar itens importados recentemente para revisão mesmo sem variação relevante
+PRICE_REVIEW_RECENT_DAYS = int(os.getenv("PRICE_REVIEW_RECENT_DAYS", "2"))
+
 # Webmania CEP integration
 WEBMANIA_APP_KEY = os.getenv("WEBMANIA_APP_KEY", "")
 WEBMANIA_APP_SECRET = os.getenv("WEBMANIA_APP_SECRET", "")

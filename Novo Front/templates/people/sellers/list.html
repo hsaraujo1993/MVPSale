@@ -1,11 +1,11 @@
-<!-- 🏷️ Cabeçalho -->
+<!-- Cabeçalho -->
 <div class="flex items-center justify-between mb-6">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">Vendedores</h1>
     <p class="text-slate-400 text-sm">Gerencie vendedores e permissões de acesso.</p>
   </div>
   <a href="#" id="toggleNewSel" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">Novo Vendedor</a>
-</div>
+  </div>
 
 <div class="mb-3 flex items-center justify-between">
   <div class="flex gap-2 items-center bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 backdrop-blur-sm">
@@ -28,7 +28,7 @@
       <input id="sel-name" name="name" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" required />
     </div>
     <div>
-      <label for="sel-access" class="sr-only">Access Level</label>
+      <label for="sel-access" class="sr-only">Nível de acesso</label>
       <label class="block text-sm mb-1">Acesso</label>
       <select id="sel-access" name="access_level" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700">
         <option value="total">total</option>
@@ -43,8 +43,8 @@
       <input id="sel-discount" name="discount_max" type="number" step="0.01" min="0" max="100" value="0" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700" />
     </div>
     <div class="md:col-span-3">
-      <label for="sel-permissions" class="sr-only">Permissions</label>
-      <label class="block text-sm mb-1">Permissions (JSON)</label>
+      <label for="sel-permissions" class="sr-only">Permissões</label>
+      <label class="block text-sm mb-1">Permissões (JSON)</label>
       <textarea id="sel-permissions" name="permissions" rows="3" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700"></textarea>
     </div>
     <div>
@@ -53,18 +53,27 @@
   </form>
   <hr class="my-3 border-slate-700" />
 </div>
+
 <div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
-  <table class="min-w-full text-sm border-separate border-spacing-0"><thead class="bg-slate-800/70 text-slate-300 uppercase text-xs"><tr>
-    <th class="text-left px-3 py-2 font-medium">Nome</th>
-    <th class="text-left px-3 py-2 font-medium">Acesso</th>
-    <th class="text-left px-3 py-2 font-medium">Desconto Máx.</th>
-  </tr></thead><tbody id="rowsSel" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition"></tbody></table>
+  <table class="min-w-full text-sm border-separate border-spacing-0">
+    <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs">
+      <tr>
+        <th class="text-left px-3 py-2 font-medium">Nome</th>
+        <th class="text-left px-3 py-2 font-medium">Acesso</th>
+        <th class="text-left px-3 py-2 font-medium">Desconto Máx.</th>
+        <th class="text-left px-3 py-2 font-medium">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="rowsSel" class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition"></tbody>
+  </table>
 </div>
+
 <div class="mt-4 flex items-center gap-2 text-sm">
   <button id="prevSel" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">← Anterior</button>
   <span id="pageInfoSel" class="text-slate-400 min-w-[80px] text-center"></span>
   <button id="nextSel" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Próxima →</button>
 </div>
+
 <script>
   const ssl = { page:1, q:'', ordering:'name', next:null, previous:null };
   const rows = document.getElementById('rowsSel');
@@ -76,27 +85,180 @@
   const pageInfo = document.getElementById('pageInfoSel');
   const toggleNewSel = document.getElementById('toggleNewSel');
   const newSelWrap = document.getElementById('newSelWrap');
+
   toggleNewSel?.addEventListener('click', (e)=>{ e.preventDefault(); newSelWrap.classList.toggle('hidden'); });
+
   document.getElementById('newSelForm')?.addEventListener('submit', async (e)=>{
-    e.preventDefault(); const form = e.currentTarget || e.target; const submitBtn = form.querySelector('button[type="submit"], button'); FormUtils.clearFieldErrors(form); FormUtils.setLoading(submitBtn, true); const fd=new FormData(form); const payload={ name: fd.get('name'), access_level: fd.get('access_level'), discount_max: parseFloat(fd.get('discount_max')||'0'), permissions: fd.get('permissions') ? JSON.parse(fd.get('permissions')) : [] };
-    try{ await Http.fetchJson('/api/people/sellers/', { method:'POST', body: JSON.stringify(payload)}); Http.toast('Vendedor criado','success'); if(form && typeof form.reset === 'function') form.reset(); newSelWrap.classList.add('hidden'); load(); }
-    catch(err){ if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message||'Erro ao criar vendedor','error'); }
-    finally{ FormUtils.setLoading(submitBtn, false); }
+    e.preventDefault();
+    const form = e.currentTarget || e.target;
+    const submitBtn = form.querySelector('button[type="submit"], button');
+    FormUtils.clearFieldErrors(form);
+    FormUtils.setLoading(submitBtn, true);
+    const fd = new FormData(form);
+    const payload = {
+      name: fd.get('name'),
+      access_level: fd.get('access_level'),
+      discount_max: parseFloat(fd.get('discount_max')||'0'),
+      permissions: fd.get('permissions') ? JSON.parse(fd.get('permissions')) : []
+    };
+    try {
+      await Http.fetchJson('/api/people/sellers/', { method:'POST', body: JSON.stringify(payload)});
+      Http.toast('Vendedor criado','success');
+      if(form && typeof form.reset === 'function') form.reset();
+      newSelWrap.classList.add('hidden');
+      load();
+    } catch(err) {
+      if(err && err.data) FormUtils.showFieldErrors(form, err.data);
+      else Http.toast(err.message||'Erro ao criar vendedor','error');
+    } finally {
+      FormUtils.setLoading(submitBtn, false);
+    }
   });
+
   apply.addEventListener('click', ()=>{ ssl.page=1; ssl.q=q.value; ssl.ordering=ordering.value; load(); });
   prev.addEventListener('click', ()=>{ if(ssl.previous){ ssl.page--; load(); }});
   next.addEventListener('click', ()=>{ if(ssl.next){ ssl.page++; load(); }});
+
+  // contêiner do detalhe (após a tabela)
+  const detailWrapSel = document.createElement('div');
+  detailWrapSel.className = 'mt-6';
+  document.querySelector('.overflow-x-auto')?.after(detailWrapSel);
+
   async function load(){
     const params = new URLSearchParams(); params.set('page', ssl.page);
-    if(ssl.q) params.set('search', ssl.q); if(ssl.ordering) params.set('ordering', ssl.ordering);
+    if(ssl.q) params.set('search', ssl.q);
+    if(ssl.ordering) params.set('ordering', ssl.ordering);
     try{
       const data = await Http.fetchJson(`/api/people/sellers/?${params}`);
-      rows.innerHTML=''; (data.results||[]).forEach(s=>{
-        const tr = document.createElement('tr'); tr.innerHTML = `
-          <td class="px-3 py-2">${s.name}</td>
-          <td class="px-3 py-2">${s.access_level||''}</td>
-          <td class="px-3 py-2">${s.discount_max ?? ''}</td>`; rows.appendChild(tr);
-      }); ssl.next=data.next; ssl.previous=data.previous; pageInfo.textContent = `Página ${ssl.page}`;
-    }catch(err){ Http.toast(err.message||'Erro ao carregar vendedores','error'); }
-  } load();
+      rows.innerHTML='';
+      (data.results||[]).forEach(s=>{
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-800/60';
+        tr.innerHTML = `
+          <td class=\"px-3 py-2\">${s.name}</td>
+          <td class=\"px-3 py-2\">${s.access_level||''}</td>
+          <td class=\"px-3 py-2\">${s.discount_max ?? ''}</td>
+          <td class=\"px-3 py-2 space-x-3\">
+            <button class=\"text-sky-400 hover:underline\" data-view-sel=\"${s.uuid}\">Visualizar</button>
+          </td>`;
+        rows.appendChild(tr);
+      });
+
+      // bind do botão Visualizar
+      rows.querySelectorAll('[data-view-sel]').forEach(btn=>{
+        btn.addEventListener('click', ()=> viewSel(btn.dataset.viewSel));
+      });
+
+      ssl.next=data.next; ssl.previous=data.previous; pageInfo.textContent = `Página ${ssl.page}`;
+    } catch(err) {
+      Http.toast(err.message||'Erro ao carregar vendedores','error');
+    }
+  }
+  load();
+
+  async function viewSel(uuid){
+    try{
+      const s = await Http.fetchJson(`/api/people/sellers/${uuid}/`);
+      detailWrapSel.innerHTML = `
+        <div class=\"bg-slate-800/40 backdrop-blur-xl border border-slate-700 rounded-2xl p-5 shadow-xl transition\">
+          <div class=\"flex items-center justify-between mb-4\">
+            <h3 class=\"font-semibold text-lg text-slate-100\">Detalhe do Vendedor</h3>
+            <div class=\"space-x-2\">
+              <button id=\"editSel\" class=\"px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm\">Editar</button>
+              <button id=\"delSel\" class=\"px-3 py-1.5 rounded bg-rose-600 hover:bg-rose-500 text-white text-sm\">Excluir</button>
+              <button id=\"closeSel\" class=\"px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm\">Voltar</button>
+            </div>
+          </div>
+
+          <div id=\"selView\" class=\"grid grid-cols-1 md:grid-cols-3 gap-2\">
+            <div class=\"text-sm\">Nome: <span class=\"text-slate-300\">${s.name||''}</span></div>
+            <div class=\"text-sm\">Acesso: <span class=\"text-slate-300\">${s.access_level||''}</span></div>
+            <div class=\"text-sm\">Desconto Máx.: <span class=\"text-slate-300\">${s.discount_max ?? ''}%</span></div>
+            <div class=\"text-sm md:col-span-3\">Usuário (id): <span class=\"text-slate-300\">${s.user ?? '-'}</span></div>
+            <div class=\"text-sm md:col-span-3\">Permissões: <span class=\"text-slate-300\">${Array.isArray(s.permissions)? s.permissions.join(', '): (s.permissions||'-')}</span></div>
+          </div>
+
+          <form id=\"selEdit\" class=\"hidden grid grid-cols-1 md:grid-cols-3 gap-3 mt-2\">
+            <div class=\"md:col-span-2\">
+              <label class=\"block text-sm text-slate-300 mb-1 font-medium\">Nome</label>
+              <input id=\"edit_name\" name=\"name\" value=\"${s.name||''}\" class=\"w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100\" />
+            </div>
+            <div>
+              <label class=\"block text-sm text-slate-300 mb-1 font-medium\">Acesso</label>
+              <select id=\"edit_access\" name=\"access_level\" class=\"w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100\">
+                ${['total','leitura','desconto','fechamento'].map(opt=>`<option value=\"${opt}\" ${String(s.access_level||'')===opt?'selected':''}>${opt}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class=\"block text-sm text-slate-300 mb-1 font-medium\">Desconto Máx. (%)</label>
+              <input id=\"edit_discount\" name=\"discount_max\" type=\"number\" step=\"0.01\" min=\"0\" max=\"100\" value=\"${s.discount_max ?? 0}\" class=\"w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100\" />
+            </div>
+            <div class=\"md:col-span-3\">
+              <label class=\"block text-sm text-slate-300 mb-1 font-medium\">Permissões (JSON)</label>
+              <textarea id=\"edit_permissions\" name=\"permissions\" rows=\"3\" class=\"w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100\">${(Array.isArray(s.permissions)? JSON.stringify(s.permissions) : (s.permissions ? JSON.stringify(s.permissions) : '[]'))}</textarea>
+            </div>
+            <div class=\"space-x-2\">
+              <button id=\"saveSel\" type=\"submit\" class=\"px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-sm\">Salvar</button>
+              <button id=\"cancelSel\" type=\"button\" class=\"px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm\">Cancelar</button>
+            </div>
+          </form>
+        </div>`;
+
+      const closeBtn = document.getElementById('closeSel');
+      const editBtn = document.getElementById('editSel');
+      const delBtn = document.getElementById('delSel');
+      const form = document.getElementById('selEdit');
+      const view = document.getElementById('selView');
+      const cancelBtn = document.getElementById('cancelSel');
+
+      closeBtn?.addEventListener('click', ()=>{ detailWrapSel.innerHTML=''; });
+      editBtn?.addEventListener('click', ()=>{ view.classList.add('hidden'); form.classList.remove('hidden'); });
+      cancelBtn?.addEventListener('click', ()=>{ form.classList.add('hidden'); view.classList.remove('hidden'); });
+
+      delBtn?.addEventListener('click', ()=>{
+        UI.confirm(`Excluir vendedor \"${s.name||''}\"?`, async ()=>{
+          try {
+            await Http.fetchJson(`/api/people/sellers/${uuid}/`, { method:'DELETE' });
+            Http.toast('Excluído com sucesso', 'success');
+            detailWrapSel.innerHTML='';
+            load();
+          } catch(err){
+            Http.toast(err.message||'Erro ao excluir vendedor','error');
+          }
+        }, 'Excluir', 'danger');
+      });
+
+      form?.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const submitBtn = document.getElementById('saveSel');
+        FormUtils.clearFieldErrors(form);
+        FormUtils.setLoading(submitBtn, true);
+        try{
+          const payload = {
+            name: document.getElementById('edit_name').value,
+            access_level: document.getElementById('edit_access').value,
+            discount_max: parseFloat(document.getElementById('edit_discount').value||'0'),
+          };
+          // permissões: tentar parsear JSON
+          try {
+            const permsText = document.getElementById('edit_permissions').value || '[]';
+            payload.permissions = JSON.parse(permsText);
+          } catch(e){ /* se inválido, backend retornará erro e FormUtils exibirá */ }
+          await Http.fetchJson(`/api/people/sellers/${uuid}/`, { method:'PATCH', body: JSON.stringify(payload) });
+          Http.toast('Alterações salvas', 'success');
+          // recarrega detalhe atualizado e lista
+          await viewSel(uuid);
+          load();
+        } catch(err){
+          if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message||'Erro ao salvar','error');
+        } finally {
+          FormUtils.setLoading(submitBtn, false);
+        }
+      });
+
+      detailWrapSel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch(err) {
+      Http.toast(err.message||'Erro ao carregar vendedor','error');
+    }
+  }
 </script>

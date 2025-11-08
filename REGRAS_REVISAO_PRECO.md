@@ -60,3 +60,28 @@ Você pode ajustar essas variáveis via ambiente (ENV) para testes, se necessár
 - API: `GET /api/v1/catalog/products/price-review/`
   - Retorno no padrão DRF: `count`, `next`, `previous`, `results[]`, `threshold`
 
+## Preço x Custo (definições)
+- Custo (base)
+  - É o valor de custo usado para calcular o Preço Sugerido.
+  - Fonte definida por `PRICE_COST_BASIS`:
+    - `last` (padrão): usa `last_cost_price` (custo líquido da última compra).
+    - `average`: usa `avg_cost_price` (custo médio ponderado do estoque).
+    - Fallback: `cost_price` cadastrado no produto.
+  - Em resumo: representa quanto o produto custa para a empresa, segundo sua política (última compra ou média).
+
+- Preço
+  - Preço Atual: é o `sale_price` salvo no produto (o que você pratica na venda). Por padrão, é recalculado ao salvar o produto para manter coerência com custo (base) + margem + arredondamento.
+  - Preço Sugerido: calculado na consulta da tela/endpoint (não altera o cadastro). Fórmula:
+    - `preço_sugerido = custo_base × (1 + margem/100)` com `PRICE_ROUNDING` aplicado.
+  - Δ Preço: quanto o Sugerido difere do Atual.
+    - `(preço_sugerido − preço_atual) / preço_atual`
+
+- Δ Custo
+  - Diferença entre custo da última compra e custo médio.
+  - `(last_cost_price − avg_cost_price) / avg_cost_price`
+
+- Quando os campos são preenchidos
+  - `last_cost_price`: atualizado por operações de compra (ex.: importação de NFe/lançamento de nota).
+  - `avg_cost_price`: mantido pelas movimentações (entradas/ajustes), como custo médio ponderado.
+  - `sale_price` (Preço Atual): salvo no produto e, por padrão, coerente com custo (base) + margem ao salvar.
+  - Na ausência de dados de compra, a tela usa o melhor valor disponível (fallback em `cost_price`).

@@ -5,40 +5,40 @@
     <p class="text-slate-400 text-sm">Gerencie o catálogo e mantenha os preços atualizados.</p>
   </div>
   <a id="toggleForm" href="#new"
-     class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">
+     class="inline-flex items-center gap-2 bg-gradient-to-r from-brand-600 to-sky-500 hover:from-brand-500 hover:to-sky-400 text-white text-sm font-medium px-4 py-2 rounded-xl shadow-card transition">
     <i data-lucide="plus" class="w-4 h-4"></i>
     Novo produto
   </a>
 </div>
 
 <!-- 📦 Formulário de novo produto -->
-<div id="productFormWrap" class="hidden mb-5 bg-slate-800/50 border border-slate-700 rounded-2xl p-4 shadow-md backdrop-blur-md">
+<div id="productFormWrap" class="hidden mb-5 bg-slate-900/50 border border-slate-800 rounded-xl p-4 shadow-card backdrop-blur-md">
   {% include "catalog/product/form.html" %}
   <hr class="my-4 border-slate-700" />
 </div>
 
 <!-- 🔍 Barra de busca e filtros -->
-<div class="flex flex-wrap items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 mb-4 backdrop-blur-sm">
+<div class="flex flex-wrap items-center gap-2 bg-slate-900/50 border border-slate-800 rounded-xl p-3 mb-4 backdrop-blur-sm">
   <label for="q" class="sr-only">Buscar produtos</label>
   <input id="q" placeholder="Buscar produtos..."
-         class="flex-1 min-w-[200px] px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+         class="flex-1 min-w-[200px] px-3 py-2 rounded bg-slate-950/70 border border-slate-800 text-sm focus:ring-2 focus:ring-brand-500 outline-none" />
   <label for="ordering" class="sr-only">Ordenação</label>
   <select id="ordering"
-          class="px-3 py-2 rounded bg-slate-900 border border-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          class="px-3 py-2 rounded bg-slate-950/70 border border-slate-800 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
     <option value="name">Nome</option>
     <option value="-created_at">Mais recentes</option>
   </select>
   <button id="applyFilters"
-          class="flex items-center gap-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition text-sm">
+          class="flex items-center gap-1 px-3 py-2 bg-brand-700 hover:bg-brand-600 text-white rounded-md transition text-sm">
     <i data-lucide="filter" class="w-4 h-4"></i>
     Aplicar
   </button>
 </div>
 
 <!-- 📋 Tabela -->
-<div class="overflow-x-auto border border-slate-700 rounded-xl shadow-sm">
+<div class="overflow-x-auto border border-slate-800 rounded-xl shadow-card">
   <table class="min-w-full text-sm border-separate border-spacing-0">
-    <thead class="bg-slate-800/70 text-slate-300 uppercase text-xs">
+    <thead class="bg-slate-900/60 text-slate-300 uppercase text-xs">
       <tr>
         <th class="text-left px-3 py-2 font-medium">Nome</th>
         <th class="text-left px-3 py-2 font-medium">SKU</th>
@@ -49,7 +49,7 @@
       </tr>
     </thead>
     <tbody id="rows"
-           class="[&_tr:nth-child(even)]:bg-slate-800/40 [&_tr:hover]:bg-slate-700/40 transition-colors duration-150">
+           class="[&_tr:nth-child(even)]:bg-slate-900/40 [&_tr:hover]:bg-slate-800/40 transition-colors duration-150">
     </tbody>
   </table>
 </div>
@@ -60,7 +60,7 @@
           class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">← Anterior</button>
   <span id="pageInfo" class="text-slate-400 min-w-[80px] text-center"></span>
   <button id="next"
-          class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Próxima →</button>
+          class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">Próxima →</button>
 </div>
 
 <script>
@@ -299,3 +299,9 @@
 <!-- Ícones -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>lucide.createIcons();</script>
+
+
+
+
+
+

@@ -1,8 +1,157 @@
 {% extends "base.html" %}
 {% block title %}Vendedor · MVPSale{% endblock %}
 {% block content %}
-{% include "partials/breadcrumb.html" with b1="Cadastros" b2="Vendedores" b3="Detalhe" %}
-<h1 class="text-2xl font-semibold mb-4">Detalhe de Vendedor</h1>
-<p class="text-slate-400 text-sm">Placeholder de página. Em breve.</p>
-{% endblock %}
+{% include "partials/breadcrumb.html" with b1="Cadastros" u1="/people?tab=sellers" b2="Vendedores" u2="/people?tab=sellers" b3="Detalhe" %}
 
+<!-- Cabeçalho -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Detalhe do Vendedor</h1>
+    <p class="text-slate-400 text-sm">Visualize e edite as informações do vendedor.</p>
+  </div>
+  <a href="/people?tab=sellers" class="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-2 transition">Voltar</a>
+  </div>
+
+<div id="sellerWrap" class="bg-slate-800/40 border border-slate-700 rounded-2xl shadow-lg backdrop-blur-md p-5">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-semibold text-lg text-slate-100">Informações</h3>
+    <div class="space-x-2">
+      <button id="editSel" class="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm">Editar</button>
+      <button id="delSel" class="px-3 py-1.5 rounded bg-rose-600 hover:bg-rose-500 text-white text-sm">Excluir</button>
+      <a href="/people?tab=sellers" class="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm">Voltar</a>
+    </div>
+  </div>
+
+  <div id="stateMsg" class="text-slate-400 text-sm mb-2"></div>
+
+  <div id="selView" class="grid grid-cols-1 md:grid-cols-3 gap-2">
+    <div class="text-sm">Nome: <span id="v_name" class="text-slate-300">-</span></div>
+    <div class="text-sm">Acesso: <span id="v_access" class="text-slate-300">-</span></div>
+    <div class="text-sm">Desconto Máx.: <span id="v_discount" class="text-slate-300">-</span></div>
+    <div class="text-sm md:col-span-3">Usuário (id): <span id="v_user" class="text-slate-300">-</span></div>
+    <div class="text-sm md:col-span-3">Permissões: <span id="v_perms" class="text-slate-300">-</span></div>
+  </div>
+
+  <form id="selEdit" class="hidden grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+    <div class="md:col-span-2">
+      <label class="block text-sm text-slate-300 mb-1 font-medium">Nome</label>
+      <input id="edit_name" name="name" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100" />
+    </div>
+    <div>
+      <label class="block text-sm text-slate-300 mb-1 font-medium">Acesso</label>
+      <select id="edit_access" name="access_level" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100">
+        <option value="total">total</option>
+        <option value="leitura">leitura</option>
+        <option value="desconto">desconto</option>
+        <option value="fechamento">fechamento</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm text-slate-300 mb-1 font-medium">Desconto Máx. (%)</label>
+      <input id="edit_discount" name="discount_max" type="number" step="0.01" min="0" max="100" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100" />
+    </div>
+    <div class="md:col-span-3">
+      <label class="block text-sm text-slate-300 mb-1 font-medium">Permissões (JSON)</label>
+      <textarea id="edit_permissions" name="permissions" rows="3" class="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100"></textarea>
+    </div>
+    <div class="space-x-2">
+      <button id="saveSel" type="submit" class="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-sm">Salvar</button>
+      <button id="cancelSel" type="button" class="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm">Cancelar</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  (function(){
+    const qs = new URLSearchParams(window.location.search);
+    let uuid = qs.get('uuid');
+    if(!uuid){
+      try {
+        const parts = (window.location.pathname||'').split('/').filter(Boolean);
+        uuid = parts[parts.length-1];
+      } catch(e) {}
+    }
+
+    const stateMsg = document.getElementById('stateMsg');
+    const editBtn = document.getElementById('editSel');
+    const delBtn = document.getElementById('delSel');
+    const view = document.getElementById('selView');
+    const form = document.getElementById('selEdit');
+    const cancelBtn = document.getElementById('cancelSel');
+
+    if(!uuid){
+      stateMsg.textContent = 'UUID não informado.';
+      return;
+    }
+
+    function fillView(s){
+      document.getElementById('v_name').textContent = s.name||'-';
+      document.getElementById('v_access').textContent = s.access_level||'-';
+      document.getElementById('v_discount').textContent = (s.discount_max ?? '-') + (s.discount_max!=null?'%':'');
+      document.getElementById('v_user').textContent = (s.user ?? '-');
+      document.getElementById('v_perms').textContent = Array.isArray(s.permissions)? s.permissions.join(', ') : (s.permissions||'-');
+    }
+
+    function fillForm(s){
+      document.getElementById('edit_name').value = s.name||'';
+      document.getElementById('edit_access').value = s.access_level||'';
+      document.getElementById('edit_discount').value = (s.discount_max ?? 0);
+      document.getElementById('edit_permissions').value = (Array.isArray(s.permissions)? JSON.stringify(s.permissions) : (s.permissions ? JSON.stringify(s.permissions) : '[]'));
+    }
+
+    async function load(){
+      stateMsg.textContent = 'Carregando...';
+      try{
+        const s = await Http.fetchJson(`/api/people/sellers/${uuid}/`);
+        fillView(s); fillForm(s);
+        stateMsg.textContent = '';
+      }catch(err){
+        stateMsg.textContent = err.message || 'Erro ao carregar vendedor';
+      }
+    }
+
+    editBtn?.addEventListener('click', ()=>{ view.classList.add('hidden'); form.classList.remove('hidden'); });
+    cancelBtn?.addEventListener('click', ()=>{ form.classList.add('hidden'); view.classList.remove('hidden'); });
+
+    delBtn?.addEventListener('click', ()=>{
+      UI.confirm('Excluir vendedor?', async ()=>{
+        try{
+          await Http.fetchJson(`/api/people/sellers/${uuid}/`, { method:'DELETE' });
+          Http.toast('Excluído com sucesso','success');
+          window.location.href = '/people?tab=sellers';
+        }catch(err){
+          Http.toast(err.message||'Erro ao excluir','error');
+        }
+      }, 'Excluir', 'danger');
+    });
+
+    form?.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const submitBtn = document.getElementById('saveSel');
+      FormUtils.clearFieldErrors(form);
+      FormUtils.setLoading(submitBtn, true);
+      try{
+        const payload = {
+          name: document.getElementById('edit_name').value,
+          access_level: document.getElementById('edit_access').value,
+          discount_max: parseFloat(document.getElementById('edit_discount').value||'0'),
+        };
+        try{
+          const permsText = document.getElementById('edit_permissions').value || '[]';
+          payload.permissions = JSON.parse(permsText);
+        }catch(e){}
+        await Http.fetchJson(`/api/people/sellers/${uuid}/`, { method:'PATCH', body: JSON.stringify(payload) });
+        Http.toast('Alterações salvas','success');
+        form.classList.add('hidden'); view.classList.remove('hidden');
+        await load();
+      }catch(err){
+        if(err && err.data) FormUtils.showFieldErrors(form, err.data); else Http.toast(err.message||'Erro ao salvar','error');
+      }finally{
+        FormUtils.setLoading(submitBtn, false);
+      }
+    });
+
+    load();
+  })();
+</script>
+{% endblock %}

@@ -5,7 +5,7 @@
     <div class="absolute inset-0 bg-slate-900/60" @click="sidebarVisible=false"></div>
   </div>
 
-  <aside class="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-800 bg-gradient-to-b from-slate-950/90 to-slate-900/80 backdrop-blur-lg shadow-2xl"
+  <aside class="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-800 bg-gradient-to-b from-brand-900/95 to-sky-800/80 backdrop-blur-lg shadow-2xl"
          x-show="sidebarVisible" x-cloak
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="-translate-x-full opacity-0"
@@ -25,19 +25,19 @@
     </div>
 
     <nav class="p-4 text-sm space-y-2 overflow-y-auto h-[calc(100vh-3rem)] pr-2">
-      <a href="/home" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-slate-600/60 shadow-md shadow-slate-950/40 hover:bg-slate-800/90 focus:outline-none focus:ring-2 focus:ring-sky-500/40">
+      <a href="/home" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gradient-to-br from-brand-700/60 to-brand-900/60 border border-brand-700/50 shadow-md shadow-slate-950/40 hover:from-brand-600/70 hover:to-brand-800/70 focus:outline-none focus:ring-2 focus:ring-sky-500/40">
         <svg class="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9"/><path d="M9 21V9h6v12"/></svg>
         <span>Home</span>
       </a>
 
-      <a href="/" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-slate-600/60 shadow-md shadow-slate-950/40 hover:bg-slate-800/90 focus:outline-none focus:ring-2 focus:ring-sky-500/40">
+      <a href="/" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gradient-to-br from-brand-700/60 to-brand-900/60 border border-brand-700/50 shadow-md shadow-slate-950/40 hover:from-brand-600/70 hover:to-brand-800/70 focus:outline-none focus:ring-2 focus:ring-sky-500/40">
         <svg class="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>
         <span>Dashboard</span>
       </a>
 
       <!-- Mobile groups -->
       <div>
-        <button type="button" class="w-full text-left px-3 py-2 rounded-lg flex justify-between items-center bg-gradient-to-br from-slate-800/90 to-slate-950/90 border border-slate-600/70 shadow-lg hover:bg-slate-800/90 focus:outline-none focus:ring-2 focus:ring-sky-500/40" @click="toggle('catalog')">
+        <button type="button" class="w-full text-left px-3 py-2 rounded-lg flex justify-between items-center bg-gradient-to-br from-brand-800/90 to-brand-900/90 border border-brand-700/70 shadow-lg hover:from-brand-700/90 hover:to-brand-900/90 focus:outline-none focus:ring-2 focus:ring-sky-500/40" @click="toggle('catalog')">
           <span class="flex items-center gap-3">
             <svg class="h-5 w-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 17l9 4 9-4"/><path d="M3 12l9 4 9-4"/></svg>
             Catálogo
@@ -48,10 +48,10 @@
           </span>
         </button>
         <div class="ml-6 pl-4 mt-1 space-y-1 border-l-2 border-sky-600/60" x-show="open.catalog" x-cloak x-transition>
-          <a href="/catalog?tab=products" class="block px-3 py-1.5 rounded-lg text-slate-100 bg-slate-800/70 hover:bg-slate-700/80">Produto</a>
-          <a href="/catalog?tab=categories" class="block px-3 py-1.5 rounded-lg text-slate-100 bg-slate-800/70 hover:bg-slate-700/80">Categoria</a>
-          <a href="/catalog?tab=brands" class="block px-3 py-1.5 rounded-lg text-slate-100 bg-slate-800/70 hover:bg-slate-700/80">Marca</a>
-          <a href="/stock" class="block px-3 py-1.5 rounded-lg text-slate-100 bg-slate-800/70 hover:bg-slate-700/80">Estoque</a>
+          <a href="/catalog?tab=products" class="block px-3 py-1.5 rounded-lg text-slate-100 bg-brand-900/40 hover:bg-brand-800/50">Produto</a>
+          <a href="/catalog?tab=categories" class="block px-3 py-1.5 rounded-lg text-slate-100 bg-brand-900/40 hover:bg-brand-800/50">Categoria</a>
+          <a href="/catalog?tab=brands" class="block px-3 py-1.5 rounded-lg text-slate-100 bg-brand-900/40 hover:bg-brand-800/50">Marca</a>
+          <a href="/stock" class="block px-3 py-1.5 rounded-lg text-slate-100 bg-brand-900/40 hover:bg-brand-800/50">Estoque</a>
         </div>
       </div>
 
